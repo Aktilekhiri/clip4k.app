@@ -235,13 +235,13 @@ footer button{background:none;border:0;padding:0;color:var(--mut);font:inherit;c
      <div class="seg"><label><input type="radio" name="q" value="1920"><span>1080p</span></label><label><input type="radio" name="q" value="2560"><span>2K</span></label><label><input type="radio" name="q" value="3840" checked><span>4K</span></label></div>
     </fieldset>
     <fieldset class="grp"><legend data-t="fl">Frame rate</legend>
-     <div class="seg"><label><input type="radio" name="fps" value="0" checked><span data-t="f0">Original</span></label><label><input type="radio" name="fps" value="60"><span>60 fps</span></label><label><input type="radio" name="fps" value="120"><span>120 fps</span></label></div>
+     <div class="seg"><label><input type="radio" name="fps" value="30"><span>30 fps</span></label><label><input type="radio" name="fps" value="60" checked><span>60 fps</span></label><label><input type="radio" name="fps" value="120"><span>120 fps</span></label></div>
     </fieldset>
     <fieldset class="grp"><legend data-t="ll">Format</legend>
      <div class="seg"><label><input type="radio" name="lay" value="asis" checked><span data-t="l0">As is</span></label><label><input type="radio" name="lay" value="blur"><span><span data-t="l1">9:16 blur</span></span></label><label><input type="radio" name="lay" value="black"><span><span data-t="l2">9:16 black</span></span></label></div>
     </fieldset>
    </fieldset>
-   <p class="note" id="n120" hidden data-t="n120">120 fps from a 30 or 60 fps clip repeats frames. The file is marked 120 fps, but motion does not get smoother.</p>
+   <p class="note" id="n120" hidden data-t="n120">120 fps from a 30 or 60 fps clip repeats frames. Through Zernio, TikTok officially accepts up to 60 fps, so 120 fps can get stuck in review.</p>
    <label class="chk"><input type="checkbox" id="tail"><span data-t="tl">Skip re-encoding, only add the tail (the file must already be an H.264 MP4)</span></label>
    <label class="chk" id="dbg" hidden><input type="checkbox" id="notail"><span>Debug: no tail (plain H.264)</span></label>
    <button class="btn big go" id="go" type="button" disabled data-t="go">Prepare video</button>

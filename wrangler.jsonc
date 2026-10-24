@@ -1,7 +1,7 @@
 {
   // Cloudflare Worker со статическим сайтом clip4k.app.
-  // Workers Builds сам подставляет имя подключённого Worker, поэтому name можно не трогать.
-  "name": "clip4k-app",
+  // Имя должно совпадать с Worker в Cloudflare (Workers & Pages).
+  "name": "green-cell-f142",
   "compatibility_date": "2026-10-01",
   "assets": { "directory": "./public" }
 }

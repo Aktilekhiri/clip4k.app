@@ -1,4 +1,4 @@
-import {addTail,inspectMp4,DEFAULT_PAD} from "./tail.js";
+import {addTail,inspectMp4,retimeVideo,ffmpegFtyp,DEFAULT_PAD} from "./tail.js";
 
 const $=i=>document.getElementById(i);
 const Q=new URLSearchParams(location.search);
@@ -14,7 +14,7 @@ let zkey="",zacc=[],zsel="",zinfo=null,lastPost="",pbusy=false;
 // ================= Тексты =================
 const T={ru:{h1:"TikTok 4K загрузчик видео",sub:"Подготовьте ролик в 1080p, 2K или 4K с частотой 60 или 120 кадров для TikTok и Instagram Reels. Обработка идёт в вашем браузере. Видео уходит с устройства только если вы сами опубликуете его в TikTok.",cta:"Выбрать видео",ctasub:"Бесплатно и без регистрации. Лучше всего работает в Chrome и Safari.",chipb:"Обычная загрузка",chipa:"120 fps, чётко",
 s1:"Видео",s2:"Обработка",s3:"Скачать",drop:"Выберите видео",dropsub:"Перетащите сюда или нажмите. Любой формат, до 350 МБ.",ql:"Разрешение",fl:"Частота кадров",ll:"Формат",f0:"Как есть",l0:"Как есть",l1:"9:16 размытие",l2:"9:16 чёрный",
-n120:"120 fps из ролика 30 или 60 fps дублирует кадры. Файл помечен как 120 fps, но движение плавнее не станет.",tl:"Не перекодировать, только добавить хвост (файл уже должен быть H.264 MP4)",go:"Подготовить видео",dl:"Скачать MP4",
+n120:"120 fps из ролика 30 или 60 fps дублирует кадры. Через Zernio TikTok официально принимает до 60 fps, поэтому 120 fps может зависнуть на проверке.",tl:"Не перекодировать, только добавить хвост (файл уже должен быть H.264 MP4)",go:"Подготовить видео",dl:"Скачать MP4",
 note:"Экспериментальный обходной приём для пересжатия в TikTok. Он меняет структуру MP4-файла. Нет гарантии, что TikTok сохранит качество, и TikTok может изменить это в любой момент.",
 pt:"Опубликовать в TikTok",zbadge:"Подключено",psub:"Необязательно. Подключите свой аккаунт Zernio и публикуйте подготовленное видео прямо в TikTok. Ключ Zernio остаётся в этом браузере и отправляется только на zernio.com. У Clip4K нет сервера, он не видит ключ.",zkl:"Ключ API Zernio",zrem:"Запомнить ключ на этом устройстве",zcon:"Подключить",zget:"Получить ключ в Zernio",zout:"Отключить",zadd:"Подключить аккаунт TikTok",zref:"Обновить",accl:"Аккаунт TikTok",phint:"Сначала подготовьте видео в блоке выше, потом вернитесь сюда.",capl:"Подпись",privl:"Кто может смотреть видео",pac:"Разрешить комментарии",pad:"Разрешить дуэты",pas:"Разрешить Stitch",cons:"Я посмотрел видео и проверил подпись. Я согласен опубликовать его в TikTok и принимаю",consl:"Music Usage Confirmation",pubgo:"Опубликовать в TikTok",plink:"Смотреть в TikTok",pprof:"Открыть профиль TikTok",pchk:"Проверить ещё раз",
 fq:"Вопросы",q1:"Почему TikTok размывает моё видео?",a1:"TikTok пересжимает каждую загрузку и обычно оставляет качество ниже, чем у вашего файла. Файл H.264 с высоким битрейтом переживает этот шаг с меньшими артефактами.",q4:"Что Clip4K делает с моим файлом?",a4:"Перекодирует ролик в вашем браузере (H.264, высокий битрейт) и дописывает в конец видеодорожки короткий ряд крошечных пустых семплов. Картинка и звук при этом не меняются. В наших тестах TikTok после этого сохранял более высокое качество и битрейт, чем при обычной загрузке. Почему так, TikTok не объясняет, поэтому считайте это обходным приёмом.",q5:"Качество гарантировано?",a5:"Нет. Всё зависит от TikTok, способа публикации и вашего устройства. Из-за лишних данных некоторые плееры и редакторы могут плохо открывать файл. Тогда используйте обычный экспорт.",q6:"120 fps делает видео плавнее?",a6:"Только если исходник тоже 120 fps. Для роликов 30 или 60 fps кадры дублируются: файл помечен как 120 fps, но движение плавнее не становится.",q7:"Что за ключ Zernio и безопасно ли его вставлять?",a7:"Zernio это отдельный сервис, который публикует в TikTok за вас. Ключ вы создаёте в своём аккаунте Zernio и вставляете сюда. Он используется в этом браузере для запросов к zernio.com, а у Clip4K нет сервера, куда его можно отправить. Без «Запомнить» ключ забывается, когда вы закрываете вкладку. Удалить ключ можно в Zernio в любой момент. Пользуйтесь доверенным компьютером или телефоном.",q2:"Видео куда-то загружается?",a2:"Нет. Обработка идёт в вашем браузере. Видео покидает устройство только если вы сами решите опубликовать его в TikTok через свой аккаунт Zernio.",q3:"Почему 4K может быть долго на телефоне?",a3:"Видео обрабатывает ваше устройство. Для длинных 4K роликов используйте компьютер или выберите 1080p.",
@@ -73,7 +73,9 @@ $("gaset").onclick=()=>{$("consent").hidden=false;$("gayes").focus()};
 // ================= Подготовка видео =================
 const pv=Q.get("pad");
 const PAD=pv!==null&&/^\d{1,5}$/.test(pv)?+pv:DEFAULT_PAD;
-const LAYOUT=Q.get("layout")==="chunk"?"chunk":"shared";
+// Хвост по умолчанию как в Termux-скриптах: пустые семплы отдельным блоком в конце ("chunk").
+// ?layout=shared включает раскладку v6 (как у Zilem) для сравнения.
+const LAYOUT=Q.get("layout")==="shared"?"shared":"chunk";
 if(Q.has("debug"))$("dbg").hidden=false;
 
 let file=null,outBlob=null,outUrl=null,outName="clip4k.mp4",busy=false,MB=null,lastInfo=null;
@@ -155,18 +157,25 @@ function makeLayout(W,H,mode){
 function bitrate(eff,fps){const base=eff>=3000?40e6:eff>=2000?30e6:20e6;return fps>=120?base*1.5:base}
 
 async function run(cfg,t0){
- const {Input,Output,Conversion,ALL_FORMATS,BlobSource,Mp4OutputFormat,BufferTarget}=await lib();
+ const {Input,Output,Conversion,ALL_FORMATS,BlobSource,Mp4OutputFormat,BufferTarget,Quality}=await lib();
  const input=new Input({source:new BlobSource(file),formats:ALL_FORMATS});
- const output=new Output({format:new Mp4OutputFormat(),target:new BufferTarget()});
+ // Оглавление (moov) в конце файла, как у ffmpeg в Termux
+ const output=new Output({format:new Mp4OutputFormat({fastStart:false}),target:new BufferTarget()});
  let w=0,h=0;
  try{const t=await input.getPrimaryVideoTrack();if(t){w=t.displayWidth||0;h=t.displayHeight||0}}catch(e){console.warn(e)}
  const cap=cfg.cap,long=Math.max(w,h);
  const eff=cfg.layout==="asis"&&long?Math.min(cap,long):cap;
- const video={codec:"avc",forceTranscode:true,bitrate:bitrate(eff,cfg.fps)};
- if(cfg.fps)video.frameRate=cfg.fps;
+ // Постоянный битрейт, как -b:v/-maxrate в Termux. Если браузер не умеет, encode() повторит с переменным.
+ const br=bitrate(eff,cfg.fps);
+ const video={codec:"avc",forceTranscode:true,quality:cfg.vbr?br:new Quality({bitrate:br,bitrateMode:"constant"})};
+ video.frameRate=cfg.fps||60;   // всегда ровная частота кадров, как fps=60 в ffmpeg
  if(cfg.layout==="asis"){if(long>cap){const v=Math.floor(cap/2)*2;if(h>=w)video.height=v;else video.width=v}}
  else{const H=Math.floor(cap/2)*2,W=Math.floor(cap*9/16/2)*2;video.process=makeLayout(W,H,cfg.layout);video.processedWidth=W;video.processedHeight=H}
- const conv=await Conversion.init({input,output,video});
+ // Звук как в Termux: AAC 48 кГц 192 кбит/с. Если браузер не умеет кодировать AAC, звук копируется как есть.
+ const audio=cfg.copyAudio?undefined:{codec:"aac",sampleRate:48000,bitrate:192e3,forceTranscode:true};
+ const conv=await Conversion.init({input,output,video,audio});
+ const lostAudio=(conv.discardedTracks||[]).find(x=>x.track&&(x.track.type==="audio"||(x.track.isAudioTrack&&x.track.isAudioTrack())));
+ if(lostAudio&&!cfg.copyAudio){console.warn("audio transcode unsupported, copying",lostAudio.reason);return run({...cfg,copyAudio:true},t0)}
  const bad=(conv.discardedTracks||[]).find(x=>x.track&&(x.track.type==="video"||(x.track.isVideoTrack&&x.track.isVideoTrack())));
  if(bad&&bad.reason==="undecodable_source_codec")throw new UserErr("nodec");
  if(!conv.isValid||bad)throw new Error("video track unsupported"+(bad?" ("+bad.reason+")":""));
@@ -176,7 +185,10 @@ async function run(cfg,t0){
  try{await Promise.race([conv.execute(),stalled])}finally{clearInterval(stallT)}
  const buf=output.target.buffer;
  if(!buf||!buf.byteLength)throw new Error("empty output");
- return buf;
+ // Шаг времени 1/fps → 1/90000, иначе укорачивание последнего кадра в хвосте не работает
+ const r=retimeVideo(new Uint8Array(buf));
+ console.info("retime",r.from,"→",r.to);
+ return ffmpegFtyp(r.buf);
 }
 // Если устройство не тянет 120 fps или 4K, отступаем на шаг: сначала fps, потом разрешение.
 async function encode(cfg,t0){
@@ -186,7 +198,8 @@ async function encode(cfg,t0){
   catch(e){
    if(e instanceof UserErr)throw e;
    console.warn("encode failed",c,e);
-   if(c.fps>60){c={...c,fps:60};say("st","retry60")}
+   if(!c.vbr){c={...c,vbr:true}}
+   else if(c.fps>60){c={...c,fps:60};say("st","retry60")}
    else if(c.cap>1920){c={...c,cap:1920};say("st","retry")}
    else throw e;
    $("pg").style.width="0";
@@ -207,12 +220,12 @@ $("go").onclick=async()=>{
  try{
   let buf,fin;
   if(tailOnly){
-   buf=new Uint8Array(await file.arrayBuffer());
+   buf=retimeVideo(new Uint8Array(await file.arrayBuffer())).buf;
    try{fin=inspectMp4(buf)}catch(e){console.warn(e);fin={ok:false}}
    if(!fin.ok)throw new UserErr("tailbad");
   }else{
    const raw=await encode({cap:+val("q"),fps:+val("fps"),layout:val("lay")},t0);
-   buf=new Uint8Array(raw);
+   buf=raw;
    try{fin=inspectMp4(buf)}catch(e){console.warn(e);fin={ok:false}}
    if(!fin.ok)throw new UserErr("fmt");
   }

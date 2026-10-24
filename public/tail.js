@@ -229,6 +229,64 @@ function readInfo(moov) {
   return { trak, sampleEntry, timescale, width, height, frames, samples: sizes, seconds: ticks / timescale, fps: ticks ? frames * timescale / ticks : 0 };
 }
 
+// Перевод видеодорожки на мелкий шаг времени (по умолчанию 1/90000 с, как ffmpeg в Termux).
+// Браузерный кодировщик пишет шаг 1/fps, и тогда «укорачивание последнего кадра» в хвосте
+// ничего не меняет. Меняются только числа в mdhd/stts/ctts/elst, размер файла тот же.
+export function retimeVideo(input, target = 90000) {
+  const u = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const top = parseBoxes(u, 0, u.length);
+  const m = top.find(b => b.type === "moov");
+  if (!m) return { buf: u, from: 0, to: 0 };
+  // Ищем блоки по месту в файле, чтобы править байты на месте
+  const kids = (s, e) => parseBoxes(u, s, e);
+  const child = (box, t) => kids(box.pos + box.hdr, box.pos + box.size).find(b => b.type === t);
+  for (const trak of kids(m.pos + m.hdr, m.pos + m.size).filter(b => b.type === "trak")) {
+    const mdia = child(trak, "mdia"); if (!mdia) continue;
+    const hdlr = child(mdia, "hdlr"); if (!hdlr || cc(u, hdlr.pos + hdlr.hdr + 8) !== "vide") continue;
+    const mdhd = child(mdia, "mdhd"), p = mdhd.pos + mdhd.hdr, v1 = u[p] === 1;
+    const ts = u32(u, p + (v1 ? 20 : 12));
+    if (ts >= 1000) return { buf: u, from: ts, to: ts };
+    const k = Math.max(2, Math.round(target / ts));
+    const dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+    const mul32 = o => { const x = u32(u, o) * k; if (x >= 4294967296) throw new Error("слишком длинное видео для пересчёта"); w32(u, o, x); };
+    w32(u, p + (v1 ? 20 : 12), ts * k);
+    if (v1) dv.setBigUint64(p + 24, dv.getBigUint64(p + 24) * BigInt(k)); else mul32(p + 16);
+    const stbl = child(child(mdia, "minf"), "stbl");
+    const stts = child(stbl, "stts"), sp = stts.pos + stts.hdr;
+    for (let i = 0, n = u32(u, sp + 4); i < n; i++) mul32(sp + 12 + 8 * i);
+    const ctts = child(stbl, "ctts");
+    if (ctts) { const q = ctts.pos + ctts.hdr; for (let i = 0, n = u32(u, q + 4); i < n; i++) { const o = q + 12 + 8 * i; w32(u, o, (dv.getInt32(o) * k) >>> 0); } }
+    const edts = child(trak, "edts"), elst = edts && child(edts, "elst");
+    if (elst) {
+      const q = elst.pos + elst.hdr, ev1 = u[q] === 1;
+      for (let i = 0, n = u32(u, q + 4); i < n; i++) {
+        if (ev1) { const o = q + 8 + 20 * i + 8, t = dv.getBigInt64(o); if (t > 0n) dv.setBigInt64(o, t * BigInt(k)); }
+        else { const o = q + 8 + 12 * i + 4, t = dv.getInt32(o); if (t > 0) w32(u, o, t * k); }
+      }
+    }
+    return { buf: u, from: ts, to: ts * k };
+  }
+  return { buf: u, from: 0, to: 0 };
+}
+
+// ftyp как у ffmpeg (isom, 512, isom iso2 avc1 mp41). Работает, когда moov стоит последним.
+export function ffmpegFtyp(input) {
+  const u = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const top = parseBoxes(u, 0, u.length);
+  const ft = top[0], mo = top[top.length - 1];
+  if (!ft || ft.type !== "ftyp" || !mo || mo.type !== "moov") return u;
+  const delta = FTYP_ISOM.length - ft.size;
+  if (!delta && u.subarray(0, ft.size).every((b, i) => b === FTYP_ISOM[i])) return u;
+  const moov = { type: "moov", payload: null, children: parseTree(u, mo.pos + mo.hdr, mo.pos + mo.size) };
+  shiftAllOffsets(moov, delta);
+  const mb = serialize(moov);
+  const out = new Uint8Array(u.length + delta);
+  out.set(FTYP_ISOM, 0);
+  out.set(u.subarray(ft.size, mo.pos), FTYP_ISOM.length);
+  out.set(mb, mo.pos + delta);
+  return out;
+}
+
 // Проверка файла без изменений: подходит ли он для добавления хвоста.
 export function inspectMp4(input) {
   const u = input instanceof Uint8Array ? input : new Uint8Array(input);
