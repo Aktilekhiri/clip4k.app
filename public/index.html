@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TikTok 4K Video Uploader – Prepare 4K, 60 and 120 fps Video for TikTok | Clip4K</title>
+<meta name="description" content="Free online TikTok 4K video uploader. Prepare 1080p, 2K or 4K clips at 60 or 120 fps for TikTok and Instagram Reels right in your browser. Nothing is uploaded unless you publish to TikTok through your own Zernio account. Experimental, no guarantees.">
+<link rel="canonical" href="https://clip4k.app/">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="TikTok 4K Video Uploader – Clip4K">
+<meta property="og:description" content="Prepare 4K, 60 and 120 fps videos for TikTok and Instagram in your browser. Processing runs in your browser.">
+<meta property="og:url" content="https://clip4k.app/">
+<meta property="og:image" content="https://clip4k.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://clip4k.app/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23000'/%3E%3Crect x='21' y='11' width='22' height='42' rx='6' fill='none' stroke='%2325F4EE' stroke-width='4' transform='translate(-1.5 0)'/%3E%3Crect x='21' y='11' width='22' height='42' rx='6' fill='none' stroke='%23FE2C55' stroke-width='4' transform='translate(1.5 0)'/%3E%3Crect x='21' y='11' width='22' height='42' rx='6' fill='none' stroke='%23fff' stroke-width='4'/%3E%3C/svg%3E">
+<link rel="modulepreload" href="app.js">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Clip4K – TikTok 4K Video Uploader","url":"https://clip4k.app/","applicationCategory":"MultimediaApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["en","ru"],"description":"Browser-based tool that prepares 1080p, 2K and 4K videos at 60 or 120 fps for TikTok and Instagram. Experimental, results are not guaranteed."}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Why does TikTok make my video blurry?","acceptedAnswer":{"@type":"Answer","text":"TikTok recompresses every upload and usually keeps a lower quality than the file you sent. A high-bitrate H.264 file survives that step with fewer artifacts."}},{"@type":"Question","name":"Is my video uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"No. Processing happens inside your browser. The video leaves your device only if you choose to publish it to TikTok through your own Zernio account."}},{"@type":"Question","name":"Is the quality guaranteed?","acceptedAnswer":{"@type":"Answer","text":"No. It depends on TikTok, on how you publish and on your device. The extra data can make some players or editors open the file badly. If that happens, use a normal export."}}]}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+ --black:#000;--s1:#0F0F11;--s2:#18181B;--line:#2A2A2F;--line2:#3A3A41;
+ --ink:#F4F4F6;--mut:#9A9AA3;--cyan:#25F4EE;--pink:#FE2C55;--pinkbtn:#E5154A;
+ --fd:Unbounded,"Arial Black",system-ui,sans-serif;
+ --fb:Manrope,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+ --r:18px;
+ color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--black);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--black);color:var(--ink);font:400 17px/1.6 var(--fb);overflow-x:hidden}
+h1,h2,h3{font-family:var(--fd);margin:0;line-height:1.08;font-weight:700}
+a{color:var(--cyan)}
+a:hover{color:#fff}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+[hidden]{display:none!important}
+.wrap{max-width:1120px;margin:0 auto;padding:0 max(20px,env(safe-area-inset-left)) 0 max(20px,env(safe-area-inset-right))}
+
+/* ---------- Навигация ---------- */
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;padding-top:max(18px,env(safe-area-inset-top))}
+.logo{font:800 19px var(--fd);display:flex;gap:10px;align-items:center;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.logo svg{width:28px;height:28px}
+.lang{display:flex;border:1px solid var(--line2);border-radius:99px;padding:3px}
+.lang button{border:0;background:none;color:var(--mut);padding:5px 12px;border-radius:99px;font:700 13px var(--fb);cursor:pointer}
+.lang button[aria-pressed=true]{background:var(--ink);color:#000}
+
+/* ---------- Главный экран ---------- */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:24px;align-items:center;min-height:min(640px,82vh);padding:8px 0 24px}
+.hero h1{font-size:clamp(38px,6.4vw,76px);font-weight:800;letter-spacing:-.035em;line-height:.98;
+ text-shadow:-3px 0 rgba(37,244,238,.85),3px 0 rgba(254,44,85,.85);animation:focus 1.6s cubic-bezier(.2,.7,.2,1) .5s both}
+@keyframes focus{from{text-shadow:-14px 0 rgba(37,244,238,.85),14px 0 rgba(254,44,85,.85);filter:blur(3px)}to{text-shadow:-3px 0 rgba(37,244,238,.85),3px 0 rgba(254,44,85,.85);filter:none}}
+.hero p.sub{color:var(--mut);max-width:44ch;margin:22px 0 0;font-size:18px}
+.cta{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center;margin-top:30px}
+.cta small{color:var(--mut);font-size:14px;max-width:26ch;line-height:1.45}
+.stage{position:relative;height:min(620px,78vh);min-height:420px}
+.stage::before{content:"";position:absolute;inset:12% 8% 4%;background:radial-gradient(closest-side at 35% 55%,rgba(37,244,238,.22),transparent 70%),radial-gradient(closest-side at 68% 45%,rgba(254,44,85,.22),transparent 70%);filter:blur(30px);pointer-events:none}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer;touch-action:pan-y;outline-offset:-6px}
+.stage .poster{position:absolute;inset:0;margin:auto;height:88%;width:auto;max-width:100%;object-fit:contain;transition:opacity .4s}
+.stage.live .poster{opacity:0;pointer-events:none}
+.chip{position:absolute;right:6%;top:16%;display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:14px;background:rgba(15,15,17,.82);border:1px solid var(--line2);
+ font:700 13px var(--fb);color:var(--mut);opacity:0;transform:translateY(8px);transition:opacity .5s,transform .5s;pointer-events:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.chip b{font:800 22px var(--fd);color:#fff;letter-spacing:-.02em}
+.stage.sharp .chip{opacity:1;transform:none}
+.chip.before{right:auto;left:4%;top:auto;bottom:18%;opacity:1;transform:none;transition:opacity .4s}
+.stage.sharp .chip.before,.stage:not(.live) .chip.before{opacity:0}
+.stage.static .chip{opacity:1;transform:none}
+
+/* ---------- Кнопки ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font:800 16px var(--fb);border-radius:14px;padding:15px 24px;border:0;cursor:pointer;
+ background:var(--ink);color:#000;text-decoration:none;transition:transform .15s,box-shadow .2s,opacity .2s;position:relative}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:-3px 3px 0 var(--cyan),3px -3px 0 var(--pink);color:#000}
+.btn:active:not(:disabled){transform:none;box-shadow:none}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.big{font-size:17px;padding:17px 28px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+.btn.ghost:hover:not(:disabled){box-shadow:none;border-color:var(--ink);color:#fff}
+.btn.dl{background:var(--cyan);color:#001514;width:100%;font-size:18px;padding:18px}
+.btn.dl:hover:not(:disabled){box-shadow:0 0 0 4px rgba(37,244,238,.25)}
+.btn.dl.ready{animation:pop .6s}
+.btn.post{background:var(--pinkbtn);color:#fff;font-size:17px}
+.btn.post:hover:not(:disabled){box-shadow:0 0 0 4px rgba(254,44,85,.3);color:#fff}
+@keyframes pop{50%{transform:scale(1.03)}}
+
+/* ---------- Панели ---------- */
+.panel{background:var(--s1);border:1px solid var(--line);border-radius:28px;padding:clamp(20px,3.4vw,40px);margin:0 0 28px}
+.panel>h2{font-size:clamp(24px,3.2vw,34px);letter-spacing:-.02em}
+.lead{color:var(--mut);margin:10px 0 0;max-width:62ch}
+
+/* шаги — это настоящая последовательность, поэтому с номерами */
+.steps{display:flex;gap:6px;list-style:none;margin:0 0 26px;padding:0;counter-reset:s}
+.steps li{flex:1;display:flex;align-items:center;gap:10px;padding:10px 0 0;border-top:3px solid var(--line);font:700 14px var(--fb);color:var(--mut);transition:border-color .3s,color .3s}
+.steps li::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);font-size:12px;flex:none}
+.steps li.on{color:var(--ink);border-top-color:var(--ink)}
+.steps li.done{color:var(--ink);border-top-color:var(--cyan)}
+.steps li.done::before{content:"✓";background:var(--cyan);border-color:var(--cyan);color:#001514}
+
+.bench{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;min-height:300px;border:1.5px dashed var(--line2);border-radius:22px;padding:28px 18px;cursor:pointer;
+ background:repeating-linear-gradient(-45deg,transparent 0 14px,rgba(255,255,255,.018) 14px 15px);transition:border-color .2s,background-color .2s}
+.drop:hover,.drop.on{border-color:var(--cyan);background-color:rgba(37,244,238,.05)}
+.drop:focus-within{outline:2px solid var(--cyan);outline-offset:3px}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.drop .frame{width:44px;height:76px;border:2px solid var(--ink);border-radius:10px;position:relative;margin-bottom:6px;box-shadow:-3px 0 0 -1px var(--cyan),3px 0 0 -1px var(--pink)}
+.drop .frame::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-35%,-50%);border-left:12px solid var(--ink);border-top:8px solid transparent;border-bottom:8px solid transparent}
+.drop strong{font:700 20px var(--fd);letter-spacing:-.01em}
+.drop span{color:var(--mut);font-size:15px;max-width:30ch}
+.drop .fn{color:var(--ink);font-weight:700;word-break:break-all;max-width:100%}
+
+fieldset{border:0;margin:0;padding:0;min-width:0}
+fieldset:disabled{opacity:.4}
+.grp{margin:0 0 18px}
+.grp>legend,.lbl{display:block;font:700 14px var(--fb);color:var(--mut);margin-bottom:8px;padding:0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--black);border:1px solid var(--line);border-radius:14px;padding:4px}
+.seg label{position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.seg>label>span{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48px;padding:6px 6px;border-radius:10px;font:700 15px var(--fb);color:var(--mut);text-align:center;line-height:1.2;transition:background .15s,color .15s}
+.seg>label>span small{font:600 12px var(--fb);opacity:.8;margin-top:2px}
+.seg input:checked+span{background:var(--s2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line2)}
+.seg input:focus-visible+span{outline:2px solid var(--cyan);outline-offset:-2px}
+.seg label:hover>span{color:var(--ink)}
+.chk{display:flex;gap:12px;align-items:flex-start;margin-top:12px;font-size:15px;color:var(--mut);cursor:pointer;line-height:1.45}
+.chk input{margin:2px 0 0;width:20px;height:20px;flex:none;accent-color:var(--cyan)}
+.note{margin:18px 0 0;font-size:14px;color:var(--mut);line-height:1.5;padding-left:14px;border-left:2px solid var(--line2)}
+.go{margin-top:20px;width:100%}
+.bar{height:6px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:22px;display:none}
+.bar div{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .3s}
+.st{margin:12px 0 0;color:var(--mut);min-height:1.6em}
+.out{margin-top:22px}
+#warn{margin:0 0 20px;padding:14px 16px;border-radius:14px;background:rgba(254,44,85,.12);border:1px solid rgba(254,44,85,.4);font-weight:700}
+
+/* публикация */
+.pubgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;margin-top:26px}
+.fl{display:block;font:700 14px var(--fb);color:var(--mut);margin-top:16px}
+.fl:first-child{margin-top:0}
+input[type=password],input[type=text],textarea,select{width:100%;margin-top:8px;font:500 16px var(--fb);border-radius:14px;padding:14px 15px;border:1px solid var(--line2);background:var(--black);color:var(--ink)}
+textarea{min-height:120px;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:var(--cyan);outline:none}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:18px}
+.acc{display:flex;gap:12px;align-items:center;padding:13px 15px;border:1px solid var(--line2);border-radius:14px;margin-top:8px;cursor:pointer;font-weight:700}
+.acc:has(input:checked){border-color:var(--cyan)}
+.acc input{width:18px;height:18px;accent-color:var(--cyan)}
+.badge{display:inline-block;margin-left:12px;padding:3px 11px;border-radius:99px;background:rgba(37,244,238,.14);color:var(--cyan);font:700 13px var(--fb);vertical-align:middle}
+.togs{display:flex;flex-wrap:wrap;gap:4px 24px;margin-top:14px}
+.togs .chk{margin-top:6px}
+.warn2{margin:12px 0 0;color:var(--pink);font-weight:700;min-height:1.2em}
+.hint{margin:0 0 6px;padding:14px 16px;border-radius:14px;background:var(--s2);color:var(--mut);font-size:15px}
+.counter{color:var(--mut);margin:6px 0 0;font-size:13px;text-align:right}
+
+/* FAQ */
+.faq{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);gap:28px;align-items:start}
+details{border-bottom:1px solid var(--line);padding:16px 0}
+details:first-child{padding-top:0}
+summary{font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font:500 22px/1 var(--fd);color:var(--mut);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--mut);margin:10px 0 0}
+
+/* поддержка */
+.qrs{display:flex;flex-wrap:wrap;gap:18px;margin-top:24px}
+.qrs figure{margin:0;text-align:center;font-weight:700;font-size:15px}
+.qrs img{width:180px;max-width:100%;height:auto;border-radius:16px;background:#fff;display:block;margin-bottom:8px}
+
+footer{padding:16px 0 calc(40px + env(safe-area-inset-bottom));color:var(--mut);display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;font-size:15px}
+footer .links{display:flex;flex-wrap:wrap;gap:12px 22px}
+footer button{background:none;border:0;padding:0;color:var(--mut);font:inherit;cursor:pointer;text-decoration:underline}
+
+/* согласие на аналитику */
+.consent{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:20;width:min(560px,calc(100% - 24px));background:var(--s2);border:1px solid var(--line2);border-radius:18px;padding:16px 18px;
+ display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 20px 50px rgba(0,0,0,.6);font-size:15px}
+.consent p{margin:0;flex:1 1 260px;color:var(--mut)}
+.consent .btn{padding:11px 18px;font-size:15px}
+
+@media(max-width:860px){
+ .hero{grid-template-columns:1fr;min-height:0;padding-top:0;gap:0}
+ .stage{order:-1;height:400px;min-height:0;margin:0 -20px}
+ .hero h1{font-size:clamp(34px,10vw,52px)}
+ .hero p.sub{font-size:16px;margin-top:16px}
+ .cta{margin-top:22px}
+ .bench,.pubgrid,.faq{grid-template-columns:1fr;gap:20px}
+ .drop{min-height:200px}
+ .chip{top:10%;right:4%}
+ .chip.before{left:4%;bottom:12%}
+ .consent{font-size:14px;padding:12px 14px;gap:10px;border-radius:16px}
+ .consent p{flex-basis:100%}
+ .consent .btn{padding:9px 14px;font-size:14px}
+}
+@media(max-width:420px){.seg>label>span{font-size:14px}.stage{height:360px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+ <a class="logo" href="/" aria-label="Clip4K home"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="19.5" y="9" width="25" height="46" rx="7" fill="none" stroke="#25F4EE" stroke-width="4"/><rect x="22.5" y="9" width="25" height="46" rx="7" fill="none" stroke="#FE2C55" stroke-width="4"/><rect x="21" y="9" width="25" height="46" rx="7" fill="none" stroke="#fff" stroke-width="4"/></svg>Clip4K</a>
+ <div class="lang" role="group" aria-label="Language"><button type="button" data-l="en" aria-pressed="true">EN</button><button type="button" data-l="ru" aria-pressed="false">RU</button></div>
+</nav>
+
+<header class="hero">
+ <div>
+  <h1 data-t="h1">TikTok 4K video uploader</h1>
+  <p class="sub" data-t="sub">Prepare your clip in 1080p, 2K or 4K at 60 or 120 fps for TikTok and Instagram Reels. Processing runs in your browser. Your video leaves your device only if you choose to publish it to TikTok.</p>
+  <div class="cta"><label class="btn big" for="f" data-t="cta">Choose a video</label><small data-t="ctasub">Free, no sign-up. Works best in Chrome or Safari.</small></div>
+ </div>
+ <div class="stage" id="stage">
+  <img class="poster" src="hero-poster.webp" alt="" width="571" height="1114" fetchpriority="high">
+  <canvas tabindex="0" role="img" aria-label="A phone showing a video that turns from blurry to sharp"></canvas>
+  <div class="chip before" aria-hidden="true"><span data-t="chipb">Typical upload</span></div>
+  <div class="chip" aria-hidden="true"><b>4K</b><span data-t="chipa">120 fps, sharp</span></div>
+ </div>
+</header>
+
+<main>
+<section class="panel" id="tool" aria-label="Clip4K">
+ <ol class="steps" id="steps"><li class="on" data-t="s1">Video</li><li data-t="s2">Prepare</li><li data-t="s3">Download</li></ol>
+ <p id="warn" role="alert" hidden></p>
+ <div class="bench">
+  <label class="drop" id="drop">
+   <input type="file" id="f" accept="video/*">
+   <i class="frame" aria-hidden="true"></i>
+   <strong data-t="drop">Choose a video</strong>
+   <span data-t="dropsub">Drag it here or tap to browse. Any video format, up to 350 MB.</span>
+   <span class="fn" id="fn"></span>
+  </label>
+  <div>
+   <fieldset id="opts">
+    <fieldset class="grp"><legend data-t="ql">Resolution</legend>
+     <div class="seg"><label><input type="radio" name="q" value="1920"><span>1080p</span></label><label><input type="radio" name="q" value="2560"><span>2K</span></label><label><input type="radio" name="q" value="3840" checked><span>4K</span></label></div>
+    </fieldset>
+    <fieldset class="grp"><legend data-t="fl">Frame rate</legend>
+     <div class="seg"><label><input type="radio" name="fps" value="0" checked><span data-t="f0">Original</span></label><label><input type="radio" name="fps" value="60"><span>60 fps</span></label><label><input type="radio" name="fps" value="120"><span>120 fps</span></label></div>
+    </fieldset>
+    <fieldset class="grp"><legend data-t="ll">Format</legend>
+     <div class="seg"><label><input type="radio" name="lay" value="asis" checked><span data-t="l0">As is</span></label><label><input type="radio" name="lay" value="blur"><span><span data-t="l1">9:16 blur</span></span></label><label><input type="radio" name="lay" value="black"><span><span data-t="l2">9:16 black</span></span></label></div>
+    </fieldset>
+   </fieldset>
+   <p class="note" id="n120" hidden data-t="n120">120 fps from a 30 or 60 fps clip repeats frames. The file is marked 120 fps, but motion does not get smoother.</p>
+   <label class="chk"><input type="checkbox" id="tail"><span data-t="tl">Skip re-encoding, only add the tail (the file must already be an H.264 MP4)</span></label>
+   <label class="chk" id="dbg" hidden><input type="checkbox" id="notail"><span>Debug: no tail (plain H.264)</span></label>
+   <button class="btn big go" id="go" type="button" disabled data-t="go">Prepare video</button>
+  </div>
+ </div>
+ <div class="bar" id="bar"><div id="pg"></div></div>
+ <p id="st" class="st" role="status"></p>
+ <div class="out"><button class="btn dl" id="dl" type="button" disabled data-t="dl">Download MP4</button></div>
+ <p class="note" data-t="note">Experimental workaround for TikTok recompression. It changes how the MP4 file is structured. There is no guarantee that TikTok keeps the quality, and TikTok can change this at any time.</p>
+</section>
+
+<section class="panel" id="pub" aria-labelledby="pub-h">
+ <h2 id="pub-h"><span data-t="pt">Publish to TikTok</span><span class="badge" id="zbadge" hidden data-t="zbadge">Connected</span></h2>
+ <p class="lead" data-t="psub">Optional. Connect your own Zernio account and publish the prepared video straight to TikTok. Your Zernio key stays in this browser and is sent only to zernio.com. Clip4K has no server and cannot see it.</p>
+ <div class="pubgrid">
+  <div>
+   <div id="zkin">
+    <label class="fl"><span data-t="zkl">Zernio API key</span><input type="password" id="zk" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk_…"></label>
+    <label class="chk"><input type="checkbox" id="zrem"><span data-t="zrem">Remember the key on this device</span></label>
+    <div class="row"><button class="btn" id="zcon" type="button" data-t="zcon">Connect</button><a class="btn ghost" href="https://zernio.com" target="_blank" rel="noopener" data-t="zget">Get a key from Zernio</a></div>
+   </div>
+   <p id="zst" class="st" role="status"></p>
+   <div id="zacc" hidden>
+    <span class="lbl" data-t="accl">TikTok account</span>
+    <div id="zlist"></div>
+    <div class="row"><button class="btn ghost" id="zadd" type="button" data-t="zadd">Connect a TikTok account</button><button class="btn ghost" id="zref" type="button" data-t="zref">Refresh</button><button class="btn ghost" id="zout" type="button" data-t="zout">Disconnect</button></div>
+   </div>
+  </div>
+  <div id="zform" hidden>
+   <p class="hint" id="phint" data-t="phint">First prepare a video in the block above, then come back here.</p>
+   <label class="fl"><span data-t="capl">Caption</span><textarea id="cap" maxlength="2200"></textarea></label>
+   <p class="counter" id="capn">0/2200</p>
+   <label class="fl"><span data-t="privl">Who can watch this video</span><select id="priv"></select></label>
+   <div class="togs">
+    <label class="chk"><input type="checkbox" id="t-com"><span data-t="pac">Allow comments</span></label>
+    <label class="chk"><input type="checkbox" id="t-duet"><span data-t="pad">Allow Duet</span></label>
+    <label class="chk"><input type="checkbox" id="t-stitch"><span data-t="pas">Allow Stitch</span></label>
+   </div>
+   <label class="chk"><input type="checkbox" id="cons"><span><span data-t="cons">I watched the video and checked the caption. I agree to post it to TikTok and accept TikTok's</span> <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener" data-t="consl">Music Usage Confirmation</a></span></label>
+   <p class="warn2" id="pwarn" role="alert"></p>
+   <button class="btn post go" id="pubgo" type="button" disabled data-t="pubgo">Publish to TikTok</button>
+   <div class="bar" id="pbar"><div id="ppg"></div></div>
+   <p id="pst" class="st" role="status"></p>
+   <div class="row"><a class="btn dl" id="plink" href="#" target="_blank" rel="noopener" hidden data-t="plink">Watch on TikTok</a><button class="btn ghost" id="pchk" type="button" hidden data-t="pchk">Check again</button></div>
+  </div>
+ </div>
+</section>
+
+<section class="panel faq" id="faq" aria-labelledby="faq-h">
+ <h2 id="faq-h" data-t="fq">Questions</h2>
+ <div>
+  <details><summary data-t="q1">Why does TikTok make my video blurry?</summary><p data-t="a1">TikTok recompresses every upload and usually keeps a lower quality than the file you sent. A high-bitrate H.264 file survives that step with fewer artifacts.</p></details>
+  <details><summary data-t="q4">What does Clip4K do to my file?</summary><p data-t="a4">It re-encodes the clip in your browser (H.264, high bitrate) and appends a short run of tiny empty samples to the end of the video track. Picture and sound are not touched by that step. In our tests TikTok then kept a higher quality and bitrate than for a plain upload. TikTok does not document why, so treat it as a workaround.</p></details>
+  <details><summary data-t="q5">Is the quality guaranteed?</summary><p data-t="a5">No. It depends on TikTok, on how you publish and on your device. The extra data can make some players or editors open the file badly. If that happens, use a normal export.</p></details>
+  <details><summary data-t="q6">Does 120 fps make the video smoother?</summary><p data-t="a6">Only if your source is 120 fps. For 30 or 60 fps clips the frames are repeated, so the file is marked 120 fps but motion does not get smoother.</p></details>
+  <details><summary data-t="q7">What is the Zernio key and is it safe to paste here?</summary><p data-t="a7">Zernio is a separate service that posts to TikTok for you. You create the key in your own Zernio account and paste it here. It is used in this browser to call zernio.com and Clip4K has no server to send it to. Without "Remember" it is forgotten when you close the tab. You can delete the key in Zernio at any time. Use a computer or phone you trust.</p></details>
+  <details><summary data-t="q2">Is my video uploaded anywhere?</summary><p data-t="a2">No. Processing happens inside your browser. The video leaves your device only if you choose to publish it to TikTok through your own Zernio account.</p></details>
+  <details><summary data-t="q3">Why can 4K be slow on my phone?</summary><p data-t="a3">The video is processed by your own device. For long 4K clips use a computer, or pick 1080p.</p></details>
+ </div>
+</section>
+
+<section class="panel" id="support" aria-labelledby="sup-h">
+ <h2 id="sup-h" data-t="sup">Support the author</h2>
+ <p class="lead" data-t="supsub">The tool is free. If it helped your videos, you can support the author with any amount via MBank, O!Bank or PayPal.</p>
+ <div class="qrs"><figure><img src="qr-mbank.jpg" alt="MBank QR code" loading="lazy" width="596" height="842">MBank</figure><figure><img src="qr-obank.png" alt="O!Bank QR code" loading="lazy" width="595" height="842">O!Bank</figure><figure><img src="qr-paypal.png" alt="PayPal donation QR code" loading="lazy" width="500" height="561">PayPal</figure></div>
+ <p style="margin:22px 0 0"><a class="btn" href="https://www.paypal.com/ncp/payment/22SJHEYSCCUY8" target="_blank" rel="noopener" data-t="pp">Support via PayPal</a></p>
+</section>
+</main>
+
+<footer><span>© 2026 Clip4K</span><span class="links"><a href="https://www.tiktok.com/@yujiomlbb" target="_blank" rel="noopener">TikTok @yujiomlbb</a><button type="button" id="gaset" data-t="gaset">Analytics settings</button></span></footer>
+</div>
+
+<div class="consent" id="consent" hidden role="dialog" aria-labelledby="consent-t">
+ <p id="consent-t" data-t="gatext">Clip4K can use Google Analytics to count visits. Your videos and keys are never sent there.</p>
+ <div class="row" style="margin:0"><button class="btn ghost" id="gano" type="button" data-t="gano">No thanks</button><button class="btn" id="gayes" type="button" data-t="gayes">Allow</button></div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

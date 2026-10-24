@@ -1,0 +1,7 @@
+{
+  // Cloudflare Worker со статическим сайтом clip4k.app.
+  // Workers Builds сам подставляет имя подключённого Worker, поэтому name можно не трогать.
+  "name": "clip4k-app",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public" }
+}
