@@ -269,6 +269,37 @@ export function retimeVideo(input, target = 90000) {
   return { buf: u, from: 0, to: 0 };
 }
 
+// Исправление меток времени звука AAC. Кодировщик в Safari иногда выдаёт пачки пакетов
+// с одинаковым временем (в stts длительность 0). В AAC каждый пакет = 1024 отсчёта,
+// поэтому таблицу можно честно пересобрать. Нужно, чтобы moov стоял после mdat.
+export function fixAacTiming(input) {
+  const u = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const top = parseBoxes(u, 0, u.length);
+  const mi = top.findIndex(b => b.type === "moov");
+  if (mi < 0 || top.slice(mi + 1).some(b => b.type === "mdat")) return { buf: u, fixed: false };
+  const mo = top[mi];
+  const moov = { type: "moov", payload: null, children: parseTree(u, mo.pos + mo.hdr, mo.pos + mo.size) };
+  let fixed = false;
+  for (const trak of findAll(moov, "trak")) {
+    if (handlerType(trak) !== "soun") continue;
+    const stbl = stblOf(trak), stsd = find(stbl, "stsd");
+    if (!stsd || cc(stsd.payload, 12) !== "mp4a") continue;
+    const stts = find(stbl, "stts"), e = readStts(stts.payload);
+    if (!e.some(([c, d]) => c && d === 0)) continue;
+    const n = e.reduce((s, [c]) => s + c, 0);
+    stts.payload = writeStts([[n, 1024]]);
+    const mdhd = find(find(trak, "mdia"), "mdhd"), p = mdhd.payload.slice();
+    if (p[0] === 1) new DataView(p.buffer).setBigUint64(24, BigInt(n * 1024)); else w32(p, 16, n * 1024);
+    mdhd.payload = p;
+    fixed = true;
+  }
+  if (!fixed) return { buf: u, fixed };
+  const mb = serialize(moov);
+  const out = new Uint8Array(mo.pos + mb.length + (u.length - mo.pos - mo.size));
+  out.set(u.subarray(0, mo.pos), 0); out.set(mb, mo.pos); out.set(u.subarray(mo.pos + mo.size), mo.pos + mb.length);
+  return { buf: out, fixed };
+}
+
 // ftyp как у ffmpeg (isom, 512, isom iso2 avc1 mp41). Работает, когда moov стоит последним.
 export function ffmpegFtyp(input) {
   const u = input instanceof Uint8Array ? input : new Uint8Array(input);
@@ -288,7 +319,7 @@ export function ffmpegFtyp(input) {
 }
 
 // Проверка файла без изменений: подходит ли он для добавления хвоста.
-export function inspectMp4(input) {
+export function inspectMp4(input, opts = {}) {
   const u = input instanceof Uint8Array ? input : new Uint8Array(input);
   const top = parseBoxes(u, 0, u.length);
   if (top.some(b => b.type === "moof")) return { ok: false, reason: "fragmented" };
@@ -297,7 +328,8 @@ export function inspectMp4(input) {
   const moov = { type: "moov", children: parseTree(u, m[0].pos + m[0].hdr, m[0].pos + m[0].size), payload: null };
   const info = readInfo(moov);
   if (!info) return { ok: false, reason: "no-video" };
-  if (info.sampleEntry !== "avc1" && info.sampleEntry !== "avc3") return { ok: false, reason: "not-h264", codec: info.sampleEntry };
+  const okCodec = ["avc1", "avc3"].concat(opts.allowHevc ? ["hvc1", "hev1"] : []);
+  if (!okCodec.includes(info.sampleEntry)) return { ok: false, reason: "not-h264", codec: info.sampleEntry };
   const { trak, ...rest } = info;
   return { ok: true, ...rest };
 }
@@ -480,9 +512,110 @@ function addTailShared(input, opts) {
   return { blob: new Blob(parts, { type: "video/mp4" }), parts, info: { pad, frames: framesBefore, moovFirst: moovBefore, layout: "shared" } };
 }
 
-// Главная функция. layout: "shared" (по умолчанию) или "chunk" (старая: хвост одним чанком в отдельном mdat).
+// ---------------------------------------------------------------------------
+// Раскладка "audio" (как у RTX Fury v21, проверено на их файле байт в байт):
+//  - видео и звук не трогаются;
+//  - добавляется третья дорожка: копия звуковой + mult×(число семплов звука) пустых семплов
+//    по 8 байт длиной 1 тик, они лежат одним чанком сразу после mdat (без заголовка блока),
+//    а в самом конце файла 8-байтовый блок free;
+//  - mvhd версии 1 с длительностью 0xFFFF_FFFF_FFFF_FFFF;
+//  - в hdlr у дорожек убираются 4 из 12 зарезервированных байт;
+//  - moov в начале файла, метка в udta видеодорожки.
+// ---------------------------------------------------------------------------
+const enc = s => new TextEncoder().encode(s);
+function box(type, ...parts) { return { type, payload: concat(parts.map(p => typeof p === "string" ? enc(p) : p)), children: null }; }
+function u32b(v) { const b = new Uint8Array(4); w32(b, 0, v); return b; }
+
+function toolTag(text) {
+  const data = box("data", u32b(1), u32b(0), text, new Uint8Array([0]));
+  const too = { type: "©too", payload: serialize(data), children: null };
+  const ilst = box("ilst", serialize(too));
+  const hdlr = box("hdlr", new Uint8Array(8), "mdir", new Uint8Array(13));
+  const meta = box("meta", new Uint8Array(4), serialize(hdlr), serialize(ilst));
+  return box("udta", serialize(meta));
+}
+
+function trimHdlr(trak) {
+  const mdia = find(trak, "mdia"), h = mdia && find(mdia, "hdlr");
+  if (!h || h.payload.length < 24) return;
+  // version/flags(4) pre_defined(4) handler(4) reserved(12) name → reserved(8) name
+  h.payload = concat([h.payload.subarray(0, 20), h.payload.subarray(24)]);
+}
+
+export function addTailAudio(input, opts = {}) {
+  const mult = opts.mult ?? 9;
+  const tag = opts.tag ?? "clip4k.app";
+  const u = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const top = parseBoxes(u, 0, u.length);
+  if (top.some(b => b.type === "moof")) throw new Error("фрагментированный MP4 не поддерживается");
+  const mo = top.filter(b => b.type === "moov"), md = top.filter(b => b.type === "mdat");
+  if (mo.length !== 1 || md.length !== 1) return null;
+  const ft = top[0].type === "ftyp" ? top[0] : null;
+  const M = md[0];
+
+  const build = (shift, tailOff) => {
+    const moov = { type: "moov", payload: null, children: parseTree(u, mo[0].pos + mo[0].hdr, mo[0].pos + mo[0].size) };
+    const traks = findAll(moov, "trak");
+    const vid = traks.find(t => handlerType(t) === "vide");
+    const aud = traks.find(t => handlerType(t) === "soun");
+    if (!vid || !aud) return null;
+    shiftAllOffsets(moov, shift);
+    for (const t of traks) trimHdlr(t);
+    // копия звуковой дорожки (без edts и udta)
+    const copy = { type: "trak", payload: null, children: parseTree(serialize(aud), 8, serialize(aud).length) };
+    copy.children = copy.children.filter(c => c.type !== "edts" && c.type !== "udta");
+    // mvhd → версия 1, длительность «бесконечность», next_track_ID + 1
+    const mvhd = find(moov, "mvhd"), p = mvhd.payload;
+    const v1 = p[0] === 1;
+    const ts = u32(p, v1 ? 20 : 12), rest = p.subarray(v1 ? 32 : 20);
+    const nextId = u32(rest, rest.length - 4);
+    const nv = new Uint8Array(32 + rest.length);
+    nv[0] = 1; w32(nv, 20, ts);
+    for (let i = 24; i < 32; i++) nv[i] = 255;
+    nv.set(rest, 32); w32(nv, nv.length - 4, nextId + 1);
+    mvhd.payload = nv;
+    // новая дорожка: id, хвост в таблицах
+    const tk = find(copy, "tkhd"), tp = tk.payload.slice();
+    w32(tp, tp[0] === 1 ? 20 : 12, nextId); tk.payload = tp;
+    const stbl = stblOf(copy);
+    const stsz = find(stbl, "stsz"), uni = u32(stsz.payload, 4), cnt = u32(stsz.payload, 8), pad = cnt * mult;
+    const nz = new Uint8Array(12 + 4 * (cnt + pad)); w32(nz, 8, cnt + pad);
+    for (let i = 0; i < cnt; i++) w32(nz, 12 + 4 * i, uni || u32(stsz.payload, 12 + 4 * i));
+    for (let i = 0; i < pad; i++) w32(nz, 12 + 4 * (cnt + i), 8);
+    stsz.payload = nz;
+    const stts = find(stbl, "stts"), e = readStts(stts.payload); e.push([pad, 1]); stts.payload = writeStts(e);
+    const co = find(stbl, "stco") || find(stbl, "co64"), nCh = u32(co.payload, 4);
+    const stsc = find(stbl, "stsc"), sp = stsc.payload, so = new Uint8Array(sp.length + 12);
+    so.set(sp); w32(so, 4, u32(sp, 4) + 1); w32(so, sp.length, nCh + 1); w32(so, sp.length + 4, pad); w32(so, sp.length + 8, 1);
+    stsc.payload = so;
+    appendChunkOffset(copy, tailOff);
+    // метка у видео, верхний udta убираем
+    vid.children = vid.children.filter(c => c.type !== "udta").concat([toolTag(tag)]);
+    moov.children = moov.children.filter(c => c.type !== "udta").concat([copy]);
+    return { bytes: serialize(moov), pad };
+  };
+
+  const ftyp = ft ? u.subarray(ft.pos, ft.pos + ft.size) : new Uint8Array(0);
+  const probe = build(0, 0);
+  if (!probe) return null;
+  const newMdat = ftyp.length + probe.bytes.length;
+  const shift = newMdat - M.pos;
+  const fin = build(shift, newMdat + M.size);
+  if (fin.bytes.length !== probe.bytes.length) throw new Error("внутренняя ошибка: размер moov изменился");
+  const tail = new Uint8Array(8 * fin.pad + 8);
+  for (let i = 0; i < fin.pad; i++) tail[8 * i + 3] = 4;                   // 00000004 00000000
+  tail.set([0, 0, 0, 8, 0x66, 0x72, 0x65, 0x65], 8 * fin.pad);            // в конце блок free (8 байт)
+  const parts = [ftyp, fin.bytes, u.subarray(M.pos, M.pos + M.size), tail];
+  return { blob: new Blob(parts, { type: "video/mp4" }), parts, info: { pad: fin.pad, layout: "audio" } };
+}
+
+// Главная функция. layout: "audio" (как RTX Fury), "shared" (как Zilem) или "chunk" (как Termux-скрипты).
 export function addTail(input, opts = {}) {
-  if ((opts.layout ?? "shared") === "shared") {
+  if ((opts.layout ?? "audio") === "audio") {
+    const r = addTailAudio(input, opts);
+    if (r) return r;
+  }
+  if (opts.layout === "shared") {
     const r = addTailShared(input, opts);
     if (r) return r;
   }
