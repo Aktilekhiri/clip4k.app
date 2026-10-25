@@ -10,7 +10,9 @@
 | `public/index.html` | Разметка и стили |
 | `public/app.js` | Логика: обработка видео, публикация через Zernio, языки |
 | `public/tail.js` | Добавление «хвоста» в MP4 |
+| `public/media/` | Фоновое видео «до/после» на главном экране (1080p и 720p) и картинка-заставка |
 | `public/vendor/` | Видеодвижок mediabunny с фиксированной версией |
+| `source/hero_video.py` | Скрипт, который рисует фоновое видео (Python + ffmpeg) |
 | `wrangler.jsonc` | Настройки Cloudflare |
 
 ## Как публикуется
