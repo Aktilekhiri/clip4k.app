@@ -74,13 +74,13 @@ async function ipCount(env, ip, kind, sinceMs) {
 async function tg(env, method, body) {
   if (!env.TG_BOT_TOKEN) return { ok: false, description: "no token" };
   const init = body instanceof FormData ? { method: "POST", body } : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
-  const r = await fetch(`${env.TG_API || "https://api.telegram.org"}/bot${env.TG_BOT_TOKEN}/${method}`, init);   // TG_API — только для тестов
+  const r = await fetch(`${env.TG_API || "https://api.telegram.org"}/bot${String(env.TG_BOT_TOKEN).trim()}/${method}`, init);   // TG_API — только для тестов
   return r.json().catch(() => ({ ok: false }));
 }
-const isAdmin = (env, chatId) => env.TG_ADMIN_CHAT && String(chatId) === String(env.TG_ADMIN_CHAT);
+const isAdmin = (env, chatId) => env.TG_ADMIN_CHAT && String(chatId) === String(env.TG_ADMIN_CHAT).trim();
 
 async function handleTg(req, env) {
-  if (!env.TG_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== env.TG_SECRET) return new Response("forbidden", { status: 403 });
+  if (!env.TG_SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== String(env.TG_SECRET).trim()) return new Response("forbidden", { status: 403 });
   const u = await req.json().catch(() => ({}));
   if (u.callback_query) {
     const q = u.callback_query, chat = q.message && q.message.chat && q.message.chat.id;
@@ -207,7 +207,7 @@ async function api(req, env, url) {
     ]);
     const caption = `🧾 Заказ ${id}\n💰 ${PRICE} сом, доступ навсегда\n👤 ${contact}\n📱 устройство ${device.slice(0, 8)}…\n\nПроверь поступление денег и нажми кнопку.`;
     const tgf = new FormData();
-    tgf.set("chat_id", String(env.TG_ADMIN_CHAT));
+    tgf.set("chat_id", String(env.TG_ADMIN_CHAT).trim());
     tgf.set("caption", caption);
     tgf.set("reply_markup", JSON.stringify({ inline_keyboard: [[{ text: "✅ Выдать ключ", callback_data: `ok:${id}` }, { text: "❌ Отклонить", callback_data: `no:${id}` }]] }));
     const isImg = /^image\/(jpeg|png|webp)$/.test(file.type);
@@ -228,8 +228,10 @@ async function api(req, env, url) {
   if (p === "/api/tg" && req.method === "POST") return handleTg(req, env);
 
   if (p === "/api/setup" && req.method === "GET") {
-    if (!env.TG_SECRET || url.searchParams.get("s") !== env.TG_SECRET) return json({ error: "forbidden" }, 403);
-    const hook = await tg(env, "setWebhook", { url: `${url.origin}/api/tg`, secret_token: env.TG_SECRET, allowed_updates: ["message", "callback_query"] });
+    if (!env.TG_SECRET || url.searchParams.get("s") !== String(env.TG_SECRET).trim())
+      // подсказка без значений: какие секреты сайт видит
+      return json({ error: "forbidden", TG_SECRET: env.TG_SECRET ? "есть, но не совпадает со ссылкой" : "НЕТ", TG_BOT_TOKEN: env.TG_BOT_TOKEN ? "есть" : "НЕТ", TG_ADMIN_CHAT: env.TG_ADMIN_CHAT ? "есть" : "НЕТ" }, 403);
+    const hook = await tg(env, "setWebhook", { url: `${url.origin}/api/tg`, secret_token: String(env.TG_SECRET).trim(), allowed_updates: ["message", "callback_query"] });
     const cmds = await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Показать chat id" }, { command: "newkey", description: "Создать ключ вручную" }, { command: "stats", description: "Статистика" }, { command: "revoke", description: "Отключить ключ" }] });
     return json({ webhook: hook, commands: cmds, adminChat: env.TG_ADMIN_CHAT ? "задан" : "НЕ задан — напишите боту /start и впишите chat id в TG_ADMIN_CHAT" });
   }

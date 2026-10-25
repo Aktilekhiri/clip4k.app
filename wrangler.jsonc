@@ -8,7 +8,9 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "clip4k-db", "database_id": "123b93f5-6381-4107-b7cf-5b988cb0f123" }
   ],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // переменные, добавленные в панели Cloudflare, не стираются при выкладке с GitHub
+  "keep_vars": true
   // Секреты задаются в Cloudflare → Settings → Variables and Secrets:
   //   TG_BOT_TOKEN, TG_ADMIN_CHAT, TG_SECRET
 }
