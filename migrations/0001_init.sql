@@ -1,0 +1,6 @@
+-- База clip4k-db (Cloudflare D1)
+CREATE TABLE IF NOT EXISTS licenses (key TEXT PRIMARY KEY, created INTEGER NOT NULL, order_id TEXT, devices TEXT NOT NULL DEFAULT '[]', note TEXT, revoked INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, token TEXT NOT NULL, created INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', contact TEXT, device TEXT, ip TEXT, license_key TEXT, tg_msg INTEGER);
+CREATE TABLE IF NOT EXISTS trials (device TEXT PRIMARY KEY, used INTEGER NOT NULL DEFAULT 0, ip TEXT, last INTEGER);
+CREATE TABLE IF NOT EXISTS ipuse (ip TEXT NOT NULL, ts INTEGER NOT NULL, kind TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS ipuse_ip ON ipuse(ip, kind, ts);

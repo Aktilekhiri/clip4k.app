@@ -19,7 +19,7 @@
 <meta name="twitter:image" content="https://clip4k.app/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M8 4h48l4 4v48l-4 4H8l-4-4V8z' fill='%23FF2638'/%3E%3Crect x='21' y='12' width='22' height='40' rx='5' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Cpath d='M29 26l9 6-9 6z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="modulepreload" href="app.js">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Clip4K – TikTok 4K Video Uploader","url":"https://clip4k.app/","applicationCategory":"MultimediaApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["en","ru"],"description":"Browser-based tool that prepares 1080p, 2K and 4K videos at 60 or 120 fps for TikTok and Instagram. Experimental, results are not guaranteed."}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Clip4K – TikTok 4K Video Uploader","url":"https://clip4k.app/","applicationCategory":"MultimediaApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"500","priceCurrency":"KGS"},"inLanguage":["en","ru"],"description":"Browser-based tool that prepares 1080p, 2K and 4K videos at 60 or 120 fps for TikTok and Instagram. Experimental, results are not guaranteed."}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Why does TikTok make my video blurry?","acceptedAnswer":{"@type":"Answer","text":"TikTok recompresses every upload and usually keeps a lower quality than the file you sent. A high-bitrate H.264 file survives that step with fewer artifacts."}},{"@type":"Question","name":"Is my video uploaded anywhere?","acceptedAnswer":{"@type":"Answer","text":"No. Processing happens inside your browser. The video leaves your device only if you choose to publish it to TikTok through your own Zernio account."}},{"@type":"Question","name":"Is the quality guaranteed?","acceptedAnswer":{"@type":"Answer","text":"No. It depends on TikTok, on how you publish and on your device. The extra data can make some players or editors open the file badly. If that happens, use a normal export."}}]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -204,6 +204,31 @@ footer button:hover{color:var(--ink)}
 .consent p{margin:0;flex:1 1 260px;color:var(--mut)}
 .consent .btn{padding:11px 18px;font-size:14px}
 
+
+/* доступ и оплата */
+.accbar{margin:0 0 22px;padding:10px 14px;border:1px solid var(--line2);border-radius:var(--r3);background:var(--bg2);font:600 14px var(--fd);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.accbar a{color:var(--acc);text-decoration:none}
+.accbar a:hover{color:var(--ink)}
+.accbar.ok{color:#7CF0A6;border-color:rgba(124,240,166,.35)}
+.accbar.none{color:var(--ink);border-color:var(--acc);background:rgba(255,38,56,.08)}
+.paysteps{list-style:none;counter-reset:p;margin:28px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.paysteps>li{position:relative;padding:18px;border:1px solid var(--line);border-radius:var(--r2);background:var(--bg2);display:flex;flex-direction:column;gap:6px}
+.paysteps>li::before{counter-increment:p;content:"0" counter(p);font:700 30px/1 var(--fd);color:var(--acc);margin-bottom:6px}
+.paysteps b{font:700 20px var(--fd);text-transform:uppercase;letter-spacing:.03em}
+.paysteps>li>span{color:var(--mut);font-size:15px}
+.paysteps .qrs{margin-top:10px;gap:10px}
+.paysteps .qrs img{width:130px}
+.small{font-size:13px}
+.mut{color:var(--mut)}
+.filebtn{position:relative;margin-top:8px;padding:11px 16px;font-size:14px;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.havekey{margin-top:28px;padding-top:22px;border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:end;max-width:640px}
+.havekey .fl{margin:0}
+.havekey .st{grid-column:1/-1}
+.licok{margin-top:24px;padding:18px;border:1px solid rgba(124,240,166,.35);border-radius:var(--r2);background:rgba(124,240,166,.06)}
+.licok p{margin:0 0 6px}
+.licok code{font:700 18px var(--fd);letter-spacing:.08em;color:#fff;background:var(--elev);padding:4px 10px;border-radius:4px;user-select:all}
+@media(max-width:860px){.paysteps{grid-template-columns:1fr}.havekey{grid-template-columns:1fr}}
 @media(max-width:860px){
  /* на телефоне видео — отдельная полоса сверху, текст под ней */
  .hero{min-height:0;display:block}
@@ -246,7 +271,7 @@ footer button:hover{color:var(--ink)}
   <div class="hero-in">
    <h1 data-t="h1">TikTok 4K video uploader</h1>
    <p class="sub" data-t="sub">Prepare your clip in 1080p, 2K or 4K at 60 or 120 fps for TikTok and Instagram Reels. Processing runs in your browser. Your video leaves your device only if you choose to publish it to TikTok.</p>
-   <div class="cta"><label class="btn big" for="f" data-t="cta">Choose a video</label><small data-t="ctasub">Free, no sign-up. Works best in Chrome or Safari.</small></div>
+   <div class="cta"><label class="btn big" for="f" data-t="cta">Choose a video</label><small data-t="ctasub">3 videos free, then 500 som forever. Works best in Chrome or Safari.</small></div>
    <dl class="specs">
     <div><dt>2K</dt><dd data-t="sp1">up to 1440p on TikTok</dd></div>
     <div><dt>60</dt><dd data-t="sp2">frames per second</dd></div>
@@ -259,6 +284,7 @@ footer button:hover{color:var(--ink)}
 
 <main>
 <section class="panel" id="tool" aria-label="Clip4K">
+ <p class="accbar" id="accbar" role="status"><a href="#buy" data-t="accbuy">Get lifetime access for 500 som</a></p>
  <ol class="steps" id="steps"><li class="on" data-t="s1">Video</li><li data-t="s2">Prepare</li><li data-t="s3">Download</li></ol>
  <p id="warn" role="alert" hidden></p>
  <div class="bench">
@@ -295,7 +321,7 @@ footer button:hover{color:var(--ink)}
 
 <section class="panel" id="pub" aria-labelledby="pub-h">
  <h2 id="pub-h"><span data-t="pt">Publish to TikTok</span><span class="badge" id="zbadge" hidden data-t="zbadge">Connected</span></h2>
- <p class="lead" data-t="psub">Optional. Connect your own Zernio account and publish the prepared video straight to TikTok. Your Zernio key stays in this browser and is sent only to zernio.com. Clip4K has no server and cannot see it.</p>
+ <p class="lead" data-t="psub">Optional. Connect your own Zernio account and publish the prepared video straight to TikTok. Your Zernio key stays in this browser and is sent only to zernio.com. It never reaches the Clip4K server.</p>
  <div class="pubgrid">
   <div>
    <div id="zkin">
@@ -335,19 +361,41 @@ footer button:hover{color:var(--ink)}
  <div>
   <details><summary data-t="q1">Why does TikTok make my video blurry?</summary><p data-t="a1">TikTok recompresses every upload and usually keeps a lower quality than the file you sent. A high-bitrate H.264 file survives that step with fewer artifacts.</p></details>
   <details><summary data-t="q4">What does Clip4K do to my file?</summary><p data-t="a4">By default the clip is re-encoded in your browser (H.264, high bitrate); with "Skip re-encoding" the picture and sound stay as they are. Clip4K then adds a copy of the audio track with tiny empty samples at the end. In our tests TikTok then showed the clip at its original quality and bitrate. TikTok does not document why, so treat it as a workaround.</p></details>
+  <details><summary data-t="q8">What do I get for 500 som?</summary><p data-t="a8">Lifetime access to Clip4K on 3 devices. It is a single payment, not a subscription. Clip4K uses a workaround: if TikTok changes its processing and it stops working, we will look for a new way, but we cannot guarantee one.</p></details>
   <details><summary data-t="q5">Is the quality guaranteed?</summary><p data-t="a5">No. It depends on TikTok, on how you publish and on your device. The extra data can make some players or editors open the file badly. If that happens, use a normal export.</p></details>
   <details><summary data-t="q6">Does 120 fps make the video smoother?</summary><p data-t="a6">Only if your source is 120 fps. For 30 or 60 fps clips the frames are repeated, so the file is marked 120 fps but motion does not get smoother.</p></details>
-  <details><summary data-t="q7">What is the Zernio key and is it safe to paste here?</summary><p data-t="a7">Zernio is a separate service that posts to TikTok for you. You create the key in your own Zernio account and paste it here. It is used in this browser to call zernio.com and Clip4K has no server to send it to. Without "Remember" it is forgotten when you close the tab. You can delete the key in Zernio at any time. Use a computer or phone you trust.</p></details>
-  <details><summary data-t="q2">Is my video uploaded anywhere?</summary><p data-t="a2">No. Processing happens inside your browser. The video leaves your device only if you choose to publish it to TikTok through your own Zernio account.</p></details>
+  <details><summary data-t="q7">What is the Zernio key and is it safe to paste here?</summary><p data-t="a7">Zernio is a separate service that posts to TikTok for you. You create the key in your own Zernio account and paste it here. It is used in this browser to call zernio.com and never reaches the Clip4K server. Without "Remember" it is forgotten when you close the tab. You can delete the key in Zernio at any time. Use a computer or phone you trust.</p></details>
+  <details><summary data-t="q2">Is my video uploaded anywhere?</summary><p data-t="a2">No. The picture and sound are processed in your browser. To add the tail, only the technical part of the file (its tables, no picture or sound) is sent to the Clip4K server. The video itself leaves your device only if you publish it to TikTok through your own Zernio account.</p></details>
   <details><summary data-t="q3">Why can 4K be slow on my phone?</summary><p data-t="a3">The video is processed by your own device. For long 4K clips use a computer, or pick 1080p.</p></details>
  </div>
 </section>
 
-<section class="panel" id="support" aria-labelledby="sup-h">
- <h2 id="sup-h" data-t="sup">Support the author</h2>
- <p class="lead" data-t="supsub">The tool is free. If it helped your videos, you can support the author with any amount via MBank, O!Bank or PayPal.</p>
- <div class="qrs"><figure><img src="qr-mbank.jpg" alt="MBank QR code" loading="lazy" width="596" height="842">MBank</figure><figure><img src="qr-obank.png" alt="O!Bank QR code" loading="lazy" width="595" height="842">O!Bank</figure><figure><img src="qr-paypal.png" alt="PayPal donation QR code" loading="lazy" width="500" height="561">PayPal</figure></div>
- <p style="margin:22px 0 0"><a class="btn" href="https://www.paypal.com/ncp/payment/22SJHEYSCCUY8" target="_blank" rel="noopener" data-t="pp">Support via PayPal</a></p>
+<section class="panel" id="buy" aria-labelledby="buy-h">
+ <h2 id="buy-h" data-t="buyh">Lifetime access for 500 som</h2>
+ <p class="lead" data-t="buysub">3 videos are free. After that, a single payment of 500 som unlocks Clip4K forever, on 3 devices.</p>
+ <div class="licok" id="licok" hidden><p><span data-t="licokt">Lifetime access is active on this device. Your key:</span> <code id="lickey"></code></p><p class="mut" data-t="licsave">Keep the key: it turns on access on another phone or computer.</p></div>
+ <div id="buyflow">
+  <ol class="paysteps">
+   <li><b data-t="b1">Pay 500 som</b><span data-t="b1s">Scan a QR code in MBank or O!Bank.</span>
+    <div class="qrs"><figure><img src="qr-mbank.jpg" alt="MBank QR code" loading="lazy" width="596" height="842">MBank</figure><figure><img src="qr-obank.png" alt="O!Bank QR code" loading="lazy" width="595" height="842">O!Bank</figure></div>
+    <p class="mut small"><span data-t="ppabroad">Abroad? Pay $6 via PayPal and send the receipt the same way.</span> <a href="https://www.paypal.com/ncp/payment/22SJHEYSCCUY8" target="_blank" rel="noopener">PayPal</a></p>
+   </li>
+   <li><b data-t="b2">Send the receipt</b><span data-t="b2s">A screenshot or photo of the receipt and a contact.</span>
+    <span class="fl"><span data-t="rcl">Payment receipt</span>
+     <label class="filebtn btn ghost"><input type="file" id="rcpt" accept="image/*,application/pdf"><span data-t="rcpick">Choose file</span></label> <span id="rfn" class="mut small"></span></span>
+    <label class="fl"><span data-t="rconl">Telegram or WhatsApp</span><input type="text" id="rcon" maxlength="80" autocomplete="off" placeholder="@username / +996 …"></label>
+    <button class="btn go" id="rsend" type="button" data-t="rsendt">Send receipt</button>
+   </li>
+   <li><b data-t="b3">Get your key</b><span data-t="b3s">We check the payment and the key appears here by itself. It usually takes up to an hour, you can close the page.</span>
+    <p id="rst" class="st" role="status"></p>
+   </li>
+  </ol>
+ </div>
+ <div class="havekey">
+  <label class="fl"><span data-t="havek">I already have a key</span><input type="text" id="kin" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="C4K-XXXX-XXXX-XXXX"></label>
+  <button class="btn ghost" id="kgo" type="button" data-t="kgot">Activate</button>
+  <p id="kst" class="st" role="status"></p>
+ </div>
 </section>
 </main>
 

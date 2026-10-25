@@ -1,4 +1,4 @@
-import {addTail,inspectMp4,retimeVideo,ffmpegFtyp,fixAacTiming,DEFAULT_PAD} from "./tail.js";
+import {inspectMp4,retimeVideo,ffmpegFtyp,fixAacTiming,splitMp4,assemble,DEFAULT_PAD} from "./tail.js";
 
 const $=i=>document.getElementById(i);
 const Q=new URLSearchParams(location.search);
@@ -12,12 +12,12 @@ const sdel=(s,k)=>{try{s.removeItem(k)}catch(e){}};
 let zkey="",zacc=[],zsel="",zinfo=null,lastPost="",pbusy=false;
 
 // ================= Тексты =================
-const T={ru:{h1:"TikTok 4K загрузчик видео",sub:"Подготовьте ролик в 1080p, 2K или 4K с частотой 60 или 120 кадров для TikTok и Instagram Reels. Обработка идёт в вашем браузере. Видео уходит с устройства только если вы сами опубликуете его в TikTok.",cta:"Выбрать видео",ctasub:"Бесплатно и без регистрации. Лучше всего работает в Chrome и Safari.",hb:"Обычная загрузка",sp1:"до 1440p в TikTok",sp2:"кадров в секунду",sp3:"Мбит/с в наших тестах",chipb:"Обычная загрузка",chipa:"120 fps, чётко",
+const T={ru:{h1:"TikTok 4K загрузчик видео",sub:"Подготовьте ролик в 1080p, 2K или 4K с частотой 60 или 120 кадров для TikTok и Instagram Reels. Обработка идёт в вашем браузере. Видео уходит с устройства только если вы сами опубликуете его в TikTok.",cta:"Выбрать видео",ctasub:"3 видео бесплатно, дальше 500 сом навсегда. Лучше всего работает в Chrome и Safari.",hb:"Обычная загрузка",accleft:"Бесплатных видео осталось:",accok:"Доступ навсегда активен ✓",accbuy:"Купить навсегда за 500 сом",buyh:"Доступ навсегда за 500 сом",buysub:"3 видео бесплатно. Дальше одна оплата 500 сом открывает Clip4K навсегда, на 3 устройствах.",licokt:"Доступ навсегда активен на этом устройстве. Ваш ключ:",licsave:"Сохраните ключ: с ним можно включить доступ на другом телефоне или компьютере.",b1:"Оплатите 500 сом",b1s:"Отсканируйте QR в MBank или O!Bank.",b2:"Отправьте чек",b2s:"Скриншот или фото чека и контакт для связи.",rcl:"Чек об оплате",rcpick:"Выбрать файл",rconl:"Telegram или WhatsApp",rsendt:"Отправить чек",b3:"Получите ключ",b3s:"Мы проверим оплату, и ключ появится здесь сам. Обычно это занимает до часа, страницу можно закрыть.",havek:"У меня уже есть ключ",kgot:"Активировать",ppabroad:"Из другой страны? Оплатите $6 через PayPal и отправьте чек так же.",needpay:"Бесплатные видео закончились. Купите доступ навсегда за 500 сом, это ниже.",srvnet:"Нет связи с сервером Clip4K. Проверьте интернет и попробуйте ещё раз.",srverr:"Сервер Clip4K не ответил. Попробуйте ещё раз через минуту.",keybad:"Ключ не найден или отключён. Проверьте, что ввели его без ошибок.",keydev:"Этот ключ уже используется на 3 устройствах. Напишите нам, если сменили телефон.",keyok:"Ключ активирован. Доступ навсегда включён.",ordwait:"Чек получен. Ждём подтверждения оплаты, ключ появится здесь сам.",ordok:"Оплата подтверждена, доступ навсегда включён.",ordno:"Оплата не подтверждена. Если это ошибка, напишите нам в Telegram @AktilekKaziev.",rneed:"Выберите файл с чеком.",cneed:"Укажите Telegram или номер WhatsApp, чтобы мы могли связаться.",rsending:"Отправляем чек...",roften:"Слишком много попыток. Подождите час и отправьте снова.",rbig:"Файл чека больше 8 МБ. Отправьте скриншот поменьше.",rtype:"Нужна картинка (JPG, PNG) или PDF.",rnotready:"Приём оплаты ещё настраивается. Напишите нам в Telegram @AktilekKaziev.",rfail:"Не удалось отправить чек. Попробуйте ещё раз.",q8:"Что я получаю за 500 сом?",a8:"Доступ к Clip4K навсегда, на 3 устройствах. Это одна оплата, без подписки. Clip4K использует обходной приём: если TikTok изменит обработку и приём перестанет работать, мы будем искать новый способ, но гарантировать его не можем.",sp1:"до 1440p в TikTok",sp2:"кадров в секунду",sp3:"Мбит/с в наших тестах",chipb:"Обычная загрузка",chipa:"120 fps, чётко",
 s1:"Видео",s2:"Обработка",s3:"Скачать",drop:"Выберите видео",dropsub:"Перетащите сюда или нажмите. Любой формат, до 350 МБ.",ql:"Разрешение",fl:"Частота кадров",ll:"Формат",f0:"Как есть",l0:"Как есть",l1:"9:16 размытие",l2:"9:16 чёрный",
 n120:"120 fps из ролика 30 или 60 fps дублирует кадры. Через Zernio TikTok официально принимает до 60 fps, поэтому 120 fps может зависнуть на проверке.",tl:"Не перекодировать, только добавить хвост (файл MP4 в H.264 или HEVC со звуком). Лучший вариант для готового экспорта 1080p 60 fps",go:"Подготовить видео",dl:"Скачать MP4",
 note:"Экспериментальный обходной приём для пересжатия в TikTok. Он меняет структуру MP4-файла. Нет гарантии, что TikTok сохранит качество, и TikTok может изменить это в любой момент.",
-pt:"Опубликовать в TikTok",zbadge:"Подключено",psub:"Необязательно. Подключите свой аккаунт Zernio и публикуйте подготовленное видео прямо в TikTok. Ключ Zernio остаётся в этом браузере и отправляется только на zernio.com. У Clip4K нет сервера, он не видит ключ.",zkl:"Ключ API Zernio",zrem:"Запомнить ключ на этом устройстве",zcon:"Подключить",zget:"Получить ключ в Zernio",zout:"Отключить",zadd:"Подключить аккаунт TikTok",zref:"Обновить",accl:"Аккаунт TikTok",phint:"Сначала подготовьте видео в блоке выше, потом вернитесь сюда.",capl:"Подпись",privl:"Кто может смотреть видео",pac:"Разрешить комментарии",pad:"Разрешить дуэты",pas:"Разрешить Stitch",cons:"Я посмотрел видео и проверил подпись. Я согласен опубликовать его в TikTok и принимаю",consl:"Music Usage Confirmation",pubgo:"Опубликовать в TikTok",plink:"Смотреть в TikTok",pprof:"Открыть профиль TikTok",pchk:"Проверить ещё раз",
-fq:"Вопросы",q1:"Почему TikTok размывает моё видео?",a1:"TikTok пересжимает каждую загрузку и обычно оставляет качество ниже, чем у вашего файла. Файл H.264 с высоким битрейтом переживает этот шаг с меньшими артефактами.",q4:"Что Clip4K делает с моим файлом?",a4:"По умолчанию ролик перекодируется в браузере (H.264, высокий битрейт), а если выбрать «Не перекодировать», картинка и звук остаются как есть. Затем Clip4K добавляет в файл копию звуковой дорожки с крошечными пустыми семплами в конце. В наших тестах TikTok после этого показывал ролик в исходном качестве и битрейте. TikTok не объясняет, почему так, поэтому считайте это обходным приёмом.",q5:"Качество гарантировано?",a5:"Нет. Всё зависит от TikTok, способа публикации и вашего устройства. Из-за лишних данных некоторые плееры и редакторы могут плохо открывать файл. Тогда используйте обычный экспорт.",q6:"120 fps делает видео плавнее?",a6:"Только если исходник тоже 120 fps. Для роликов 30 или 60 fps кадры дублируются: файл помечен как 120 fps, но движение плавнее не становится.",q7:"Что за ключ Zernio и безопасно ли его вставлять?",a7:"Zernio это отдельный сервис, который публикует в TikTok за вас. Ключ вы создаёте в своём аккаунте Zernio и вставляете сюда. Он используется в этом браузере для запросов к zernio.com, а у Clip4K нет сервера, куда его можно отправить. Без «Запомнить» ключ забывается, когда вы закрываете вкладку. Удалить ключ можно в Zernio в любой момент. Пользуйтесь доверенным компьютером или телефоном.",q2:"Видео куда-то загружается?",a2:"Нет. Обработка идёт в вашем браузере. Видео покидает устройство только если вы сами решите опубликовать его в TikTok через свой аккаунт Zernio.",q3:"Почему 4K может быть долго на телефоне?",a3:"Видео обрабатывает ваше устройство. Для длинных 4K роликов используйте компьютер или выберите 1080p.",
+pt:"Опубликовать в TikTok",zbadge:"Подключено",psub:"Необязательно. Подключите свой аккаунт Zernio и публикуйте подготовленное видео прямо в TikTok. Ключ Zernio остаётся в этом браузере и отправляется только на zernio.com. На сервер Clip4K ключ не попадает.",zkl:"Ключ API Zernio",zrem:"Запомнить ключ на этом устройстве",zcon:"Подключить",zget:"Получить ключ в Zernio",zout:"Отключить",zadd:"Подключить аккаунт TikTok",zref:"Обновить",accl:"Аккаунт TikTok",phint:"Сначала подготовьте видео в блоке выше, потом вернитесь сюда.",capl:"Подпись",privl:"Кто может смотреть видео",pac:"Разрешить комментарии",pad:"Разрешить дуэты",pas:"Разрешить Stitch",cons:"Я посмотрел видео и проверил подпись. Я согласен опубликовать его в TikTok и принимаю",consl:"Music Usage Confirmation",pubgo:"Опубликовать в TikTok",plink:"Смотреть в TikTok",pprof:"Открыть профиль TikTok",pchk:"Проверить ещё раз",
+fq:"Вопросы",q1:"Почему TikTok размывает моё видео?",a1:"TikTok пересжимает каждую загрузку и обычно оставляет качество ниже, чем у вашего файла. Файл H.264 с высоким битрейтом переживает этот шаг с меньшими артефактами.",q4:"Что Clip4K делает с моим файлом?",a4:"По умолчанию ролик перекодируется в браузере (H.264, высокий битрейт), а если выбрать «Не перекодировать», картинка и звук остаются как есть. Затем Clip4K добавляет в файл копию звуковой дорожки с крошечными пустыми семплами в конце. В наших тестах TikTok после этого показывал ролик в исходном качестве и битрейте. TikTok не объясняет, почему так, поэтому считайте это обходным приёмом.",q5:"Качество гарантировано?",a5:"Нет. Всё зависит от TikTok, способа публикации и вашего устройства. Из-за лишних данных некоторые плееры и редакторы могут плохо открывать файл. Тогда используйте обычный экспорт.",q6:"120 fps делает видео плавнее?",a6:"Только если исходник тоже 120 fps. Для роликов 30 или 60 fps кадры дублируются: файл помечен как 120 fps, но движение плавнее не становится.",q7:"Что за ключ Zernio и безопасно ли его вставлять?",a7:"Zernio это отдельный сервис, который публикует в TikTok за вас. Ключ вы создаёте в своём аккаунте Zernio и вставляете сюда. Он используется в этом браузере для запросов к zernio.com, на сервер Clip4K он не попадает. Без «Запомнить» ключ забывается, когда вы закрываете вкладку. Удалить ключ можно в Zernio в любой момент. Пользуйтесь доверенным компьютером или телефоном.",q2:"Видео куда-то загружается?",a2:"Нет. Картинка и звук обрабатываются в вашем браузере. Для добавления хвоста на сервер Clip4K отправляется только служебная часть файла (таблицы, без картинки и звука). Само видео уходит с устройства, только если вы сами публикуете его в TikTok через свой аккаунт Zernio.",q3:"Почему 4K может быть долго на телефоне?",a3:"Видео обрабатывает ваше устройство. Для длинных 4K роликов используйте компьютер или выберите 1080p.",
 sup:"Поддержите автора",supsub:"Сервис бесплатный. Если он помог вашим видео, поддержите автора любой суммой через MBank, O!Bank или PayPal.",pp:"Поддержать через PayPal",gaset:"Настройки аналитики",gatext:"Clip4K может считать посещения через Google Analytics. Ваши видео и ключи туда не попадают.",gano:"Нет, спасибо",gayes:"Разрешить",
 pchoose:"— выберите —",pv_PUBLIC_TO_EVERYONE:"Все",pv_MUTUAL_FOLLOW_FRIENDS:"Друзья (взаимные подписки)",pv_FOLLOWER_OF_CREATOR:"Мои подписчики",pv_SELF_ONLY:"Только я",
 znet:"Не удалось связаться с Zernio. Проверьте интернет. Если ошибка повторяется, браузер мог заблокировать запрос к zernio.com.",ze401:"Ключ не подошёл. Проверьте его в Zernio.",ze403:"Zernio отказал: аккаунт отключён, публикация не разрешена или превышен лимит тарифа.",ze409:"Такая публикация уже была недавно. Измените подпись и попробуйте снова.",ze429:"Слишком много публикаций за короткое время. Подождите и повторите.",zeother:"Ошибка Zernio.",zbad:"Вставьте ключ целиком. Он начинается с sk_.",zchk:"Проверяем...",zbye:"Ключ удалён из этого браузера.",zno:"Аккаунтов TikTok пока нет. Нажмите «Подключить аккаунт TikTok».",zrecon:"нужно переподключить",zleave:"Вы уйдёте с этой страницы, и подготовленное видео пропадёт. Продолжить? Лучше сначала подключить аккаунт, а потом готовить видео.",znoprof:"В Zernio не найден профиль.",zconn:"TikTok подключён.",zfail:"Не удалось подключить TikTok.",zoff:"Выключено в настройках TikTok-аккаунта",
@@ -25,7 +25,7 @@ pnomore:"TikTok сообщает, что этот аккаунт сейчас н
 big:"Файл больше 350 МБ. Выберите другой.",load:"Запускаем обработку...",work:"Обработка: ",tailwork:"Читаем файл...",tailst:"Добавляем хвост...",done:"Готово. Нажмите «Скачать MP4».",err:"Не получилось обработать видео. Откройте сайт в Chrome или Safari, выберите 1080p или другой файл.",nosup:"Этот браузер не умеет кодировать H.264. Откройте сайт в Chrome, Edge или Safari, либо включите «Не перекодировать» для файла H.264 MP4.",nodec:"Браузер не может прочитать кодек этого видео (часто это HEVC с iPhone). Откройте сайт в Safari или Chrome либо экспортируйте ролик в H.264.",retry:"Устройство не тянет такое разрешение, делаем в 1080p...",retry60:"Устройство не тянет 120 fps, делаем 60 fps...",fmt:"Не удалось прочитать результат. Попробуйте другой файл или выберите 1080p.",tailbad:"Для этого режима нужен обычный MP4 (H.264 или HEVC) без фрагментов. Отключите «Не перекодировать».",
 inapp:"Вы открыли сайт внутри приложения (Telegram, Instagram и т.п.). Видео здесь не сохранится. Откройте сайт в Safari: нажмите ⋯ или значок компаса и выберите «Открыть в Safari».",inappA:"Вы открыли сайт внутри приложения (Telegram, Instagram и т.п.). Видео здесь может не сохраниться. Нажмите ⋮ и выберите «Открыть в браузере» или «Открыть в Chrome».",iosnote:"В меню выберите «Сохранить видео»."}};
 const EN={};document.querySelectorAll("[data-t]").forEach(e=>EN[e.dataset.t]=e.textContent);
-T.en={...EN,zoff:"Off in your TikTok account settings",pprof:"Open TikTok profile",
+T.en={...EN,accbuy:"Get lifetime access for 500 som",zoff:"Off in your TikTok account settings",accleft:"Free videos left:",accok:"Lifetime access is active ✓",needpay:"Your free videos are used up. Get lifetime access for 500 som below.",srvnet:"Could not reach the Clip4K server. Check your internet and try again.",srverr:"The Clip4K server did not respond. Try again in a minute.",keybad:"Key not found or disabled. Check that you typed it correctly.",keydev:"This key is already used on 3 devices. Message us if you changed your phone.",keyok:"Key activated. Lifetime access is on.",ordwait:"Receipt received. Waiting for the payment to be confirmed, your key will appear here.",ordok:"Payment confirmed, lifetime access is on.",ordno:"Payment was not confirmed. If this is a mistake, message us on Telegram @AktilekKaziev.",rneed:"Pick the receipt file.",cneed:"Add your Telegram or WhatsApp number so we can reach you.",rsending:"Sending the receipt...",roften:"Too many attempts. Wait an hour and send it again.",rbig:"The receipt file is over 8 MB. Send a smaller screenshot.",rtype:"Send an image (JPG, PNG) or a PDF.",rnotready:"Payments are still being set up. Message us on Telegram @AktilekKaziev.",rfail:"Could not send the receipt. Try again.",pprof:"Open TikTok profile",
 pchoose:"— choose —",pv_PUBLIC_TO_EVERYONE:"Everyone",pv_MUTUAL_FOLLOW_FRIENDS:"Friends (mutual follows)",pv_FOLLOWER_OF_CREATOR:"My followers",pv_SELF_ONLY:"Only me",
 znet:"Could not reach Zernio. Check your internet. If this keeps happening, the browser may have blocked the request to zernio.com.",ze401:"The key was not accepted. Check it in Zernio.",ze403:"Zernio refused: the account is disconnected, not allowed to post, or over the plan limit.",ze409:"This post was already published recently. Change the caption and try again.",ze429:"Too many posts in a short time. Wait and try again.",zeother:"Zernio error.",zbad:"Paste the whole key. It starts with sk_.",zchk:"Checking...",zbye:"The key was removed from this browser.",zno:"No TikTok accounts yet. Tap \"Connect a TikTok account\".",zrecon:"needs reconnecting",zleave:"You will leave this page and the prepared video will be lost. Continue? It is better to connect the account first and prepare the video afterwards.",znoprof:"No profile found in Zernio.",zconn:"TikTok connected.",zfail:"Could not connect TikTok.",
 pnomore:"TikTok says this account cannot post right now.",plong:"The video is longer than this account allows",pup:"Uploading the video",ppub:"Publishing...",pproc:"TikTok is processing the video. This can take a few minutes.",ppubd:"Published.",ppubw:"Published. Looking for the direct link, the profile is already open to view.",pproc2:"TikTok is still processing the video. Tap \"Check again\" in a minute.",ppubd2:"Published. There is no direct link yet, open the profile or tap \"Check again\".",pfail:"Publishing failed.",pretry:"Lost the connection to Zernio, trying again...",zput:"Could not upload the video to Zernio storage",zputnet:"Could not upload the video to Zernio storage. Check your internet.",
@@ -76,7 +76,7 @@ const pv=Q.get("pad");
 const PAD=pv!==null&&/^\d{1,5}$/.test(pv)?+pv:DEFAULT_PAD;
 // Хвост по умолчанию как у RTX Fury: копия звуковой дорожки с пустыми семплами ("audio").
 // ?layout=chunk — как Termux-скрипты, ?layout=shared — раскладка v6 (как у Zilem). Без звука — chunk.
-const LAYOUT=["shared","chunk"].includes(Q.get("layout"))?Q.get("layout"):"audio";
+const LAYOUT=Q.get("layout")==="chunk"?"chunk":"audio";
 if(Q.has("debug"))$("dbg").hidden=false;
 
 let file=null,outBlob=null,outUrl=null,outName="clip4k.mp4",busy=false,MB=null,lastInfo=null;
@@ -215,6 +215,7 @@ $("go").onclick=async()=>{
  const tailOnly=$("tail").checked;
  await h264Check;
  if(!tailOnly&&!h264){say("st","nosup");return}
+ if(!$("notail").checked&&ACC.ready&&!ACC.licensed&&ACC.trialsLeft<=0){needPay();return}
  busy=true;$("go").disabled=true;$("bar").style.display="block";$("pg").style.width="0";$("dl").disabled=true;
  if(outUrl){URL.revokeObjectURL(outUrl);outUrl=null}
  outBlob=null;pubRefresh();
@@ -236,7 +237,7 @@ $("go").onclick=async()=>{
   $("pg").style.width="100%";say("st","tailst");
   await new Promise(r=>setTimeout(r,30));
   lastInfo=fin;
-  const blob=$("notail").checked?new Blob([buf],{type:"video/mp4"}):addTail(buf,{pad:PAD,layout:LAYOUT}).blob;
+  const blob=$("notail").checked?new Blob([buf],{type:"video/mp4"}):await serverTail(buf);
   outBlob=blob;outUrl=URL.createObjectURL(blob);
   $("dl").disabled=false;$("dl").classList.remove("ready");void $("dl").offsetWidth;$("dl").classList.add("ready");
   stage(3);pubRefresh();pwarnUpdate();
@@ -246,11 +247,102 @@ $("go").onclick=async()=>{
   $("dl").scrollIntoView({behavior:"smooth",block:"center"});
  }catch(e){
   console.error(e);stage(2);
-  if(e instanceof UserErr)say("st",e.key);
+  if(e instanceof UserErr){say("st",e.key);if(e.key==="needpay")needPay()}
   else say("st","err"," ["+String((e&&e.message)||e).slice(0,90)+"]");
  }
  busy=false;$("go").disabled=false;
 };
+
+// ================= Доступ: пробные видео и ключ навсегда =================
+// Хвост добавляет сервер: ему уходит только «оглавление» файла (ftyp и moov), не видео.
+const DEVK="clip4k_dev",LICK="clip4k_lic",ORDK="clip4k_order";
+const DEV=(()=>{let d=sget(localStorage,DEVK);if(!/^[0-9a-f]{32}$/.test(d||"")){const b=new Uint8Array(16);crypto.getRandomValues(b);d=[...b].map(x=>x.toString(16).padStart(2,"0")).join("");sset(localStorage,DEVK,d)}return d})();
+const ACC={ready:false,licensed:false,trialsLeft:3,trials:3,key:sget(localStorage,LICK)||""};
+function accUi(){
+ const bar=$("accbar");bar.textContent="";
+ const t=document.createElement("span");bar.appendChild(t);
+ if(ACC.licensed){t.textContent=tr("accok");bar.className="accbar ok";$("licok").hidden=false;$("lickey").textContent=ACC.key;$("buyflow").hidden=true}
+ else{
+  t.textContent=tr("accleft")+" "+ACC.trialsLeft+" / "+ACC.trials;bar.className="accbar"+(ACC.trialsLeft<=0?" none":"");
+  const a=document.createElement("a");a.href="#buy";a.textContent=tr("accbuy");bar.appendChild(a);
+  $("licok").hidden=true;$("buyflow").hidden=false;
+ }
+}
+document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",accUi));
+async function accRefresh(){
+ try{
+  const r=await fetch("/api/status?device="+DEV+(ACC.key?"&key="+encodeURIComponent(ACC.key):""));
+  const j=await r.json();if(!r.ok)throw 0;
+  ACC.ready=true;ACC.licensed=!!j.licensed;ACC.trialsLeft=j.trialsLeft;ACC.trials=j.trials||3;
+  if(ACC.key&&!j.licensed&&j.keyError==="badkey"){sdel(localStorage,LICK);ACC.key=""}
+ }catch(e){console.warn("status",e)}
+ accUi();
+}
+function needPay(){say("st","needpay");$("buy").scrollIntoView({behavior:"smooth",block:"start"})}
+async function serverTail(buf){
+ const p=splitMp4(buf);
+ if(!p.ok)throw new UserErr("tailbad");
+ const meta={ftypLen:p.ftyp.length,mdatPos:p.mdatPos,mdatSize:p.mdatSize,layout:LAYOUT,pad:PAD};
+ let r;
+ try{r=await fetch("/api/tail",{method:"POST",headers:{"x-device":DEV,"x-key":ACC.key,"x-meta":JSON.stringify(meta),"content-type":"application/octet-stream"},body:new Blob([p.ftyp,p.moov])})}
+ catch(e){throw new UserErr("srvnet")}
+ if(r.status===402){ACC.trialsLeft=0;accUi();throw new UserErr("needpay")}
+ if(r.status===409)throw new UserErr("keydev");
+ if(r.status===403){sdel(localStorage,LICK);ACC.key="";ACC.licensed=false;accRefresh();throw new UserErr("keybad")}
+ if(r.status===422)throw new UserErr("tailbad");
+ if(!r.ok)throw new UserErr("srverr");
+ const head={moov:new Uint8Array(await r.arrayBuffer()),layout:r.headers.get("x-layout"),pad:+r.headers.get("x-pad")};
+ const left=r.headers.get("x-trials-left");
+ if(left!==null&&left!=="")ACC.trialsLeft=+left;
+ if(r.headers.get("x-licensed")==="1")ACC.licensed=true;
+ accUi();
+ return assemble(p,head);
+}
+async function activate(key,quiet){
+ key=String(key||"").trim().toUpperCase();
+ if(!quiet)say("kst","zchk");
+ try{
+  const r=await fetch("/api/activate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key,device:DEV})});
+  const j=await r.json().catch(()=>({}));
+  if(r.ok){ACC.key=j.key||key;sset(localStorage,LICK,ACC.key);ACC.licensed=true;accUi();say("kst","keyok");return true}
+  say("kst",r.status===409?"keydev":"keybad");
+ }catch(e){say("kst","srvnet")}
+ return false;
+}
+$("kgo").onclick=()=>activate($("kin").value);
+$("kin").addEventListener("keydown",e=>{if(e.key==="Enter")activate($("kin").value)});
+let pollT=0;
+async function pollOrder(){
+ clearTimeout(pollT);
+ let o;try{o=JSON.parse(sget(localStorage,ORDK)||"null")}catch(e){}
+ if(!o||!o.id)return;
+ try{
+  const r=await fetch("/api/order?id="+encodeURIComponent(o.id)+"&token="+encodeURIComponent(o.token));
+  const j=await r.json();
+  if(r.status===404){sdel(localStorage,ORDK);return}
+  if(j.status==="approved"&&j.key){sdel(localStorage,ORDK);$("kin").value=j.key;await activate(j.key,true);say("rst","ordok");return}
+  if(j.status==="rejected"){sdel(localStorage,ORDK);say("rst","ordno");return}
+  say("rst","ordwait");
+ }catch(e){say("rst","ordwait")}
+ pollT=setTimeout(pollOrder,15000);
+}
+$("rsend").onclick=async()=>{
+ const f=$("rcpt").files[0],c=$("rcon").value.trim();
+ if(!f){say("rst","rneed");return}
+ if(c.length<3){say("rst","cneed");$("rcon").focus();return}
+ const fd=new FormData();fd.set("receipt",f);fd.set("contact",c);fd.set("device",DEV);
+ $("rsend").disabled=true;say("rst","rsending");
+ try{
+  const r=await fetch("/api/order",{method:"POST",body:fd});
+  const j=await r.json().catch(()=>({}));
+  if(r.ok){sset(localStorage,ORDK,JSON.stringify({id:j.id,token:j.token}));say("rst","ordwait");pollTimerStart()}
+  else say("rst",r.status===429?"roften":r.status===413?"rbig":r.status===415?"rtype":r.status===503?"rnotready":"rfail");
+ }catch(e){say("rst","srvnet")}
+ $("rsend").disabled=false;
+};
+function pollTimerStart(){pollT=setTimeout(pollOrder,15000)}
+$("rcpt").onchange=()=>{const f=$("rcpt").files[0];$("rfn").textContent=f?f.name:""};
+accRefresh();pollOrder();
 
 // ================= Публикация в TikTok через Zernio =================
 // У сайта нет сервера: ключ Zernio вводит сам пользователь, браузер ходит на zernio.com напрямую.
