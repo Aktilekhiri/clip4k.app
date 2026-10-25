@@ -60,25 +60,12 @@ nav{display:flex;justify-content:space-between;align-items:center;padding:20px 0
 .lang button[aria-pressed=true]{background:var(--elev);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(139,92,246,.45)}
 
 /* ---------- Главный экран ---------- */
-.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:24px;align-items:center;min-height:min(640px,82vh);padding:8px 0 32px}
-.hero h1{font-size:clamp(40px,6.2vw,74px);font-weight:800;letter-spacing:-.04em;line-height:.98;color:var(--ink);animation:rise .9s var(--ease) .1s both}
+.hero{padding:clamp(40px,9vw,112px) 0 clamp(36px,6vw,72px);max-width:880px}
+.hero h1{max-width:14ch;font-size:clamp(42px,7.4vw,88px);font-weight:800;letter-spacing:-.04em;line-height:.98;color:var(--ink);animation:rise .9s var(--ease) .1s both}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .hero p.sub{color:var(--mut);max-width:44ch;margin:24px 0 0;font-size:18px;line-height:1.6}
 .cta{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:center;margin-top:32px}
 .cta small{color:var(--mut);font-size:14px;max-width:26ch;line-height:1.45}
-.stage{position:relative;height:min(620px,78vh);min-height:420px}
-.stage::before{content:"";position:absolute;inset:14% 10% 6%;background:radial-gradient(closest-side at 50% 55%,rgba(139,92,246,.32),rgba(139,92,246,.08) 55%,transparent 75%);filter:blur(36px);pointer-events:none}
-.stage::after{content:"";position:absolute;left:22%;right:22%;bottom:5%;height:24px;border-radius:50%;background:rgba(0,0,0,.65);filter:blur(14px);pointer-events:none}
-.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer;touch-action:pan-y;outline-offset:-6px;z-index:1}
-.stage .poster{position:absolute;inset:0;margin:auto;height:88%;width:auto;max-width:100%;object-fit:contain;transition:opacity .4s;z-index:1}
-.stage.live .poster{opacity:0;pointer-events:none}
-.chip{position:absolute;z-index:2;right:6%;top:16%;display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:var(--r3);background:rgba(27,27,37,.88);border:1px solid var(--line2);box-shadow:0 12px 30px -12px rgba(0,0,0,.7);
- font:600 13px var(--fb);color:var(--mut);opacity:0;transform:translateY(8px);transition:opacity .5s,transform .5s;pointer-events:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-.chip b{font:800 22px var(--fd);color:var(--ink);letter-spacing:-.03em}
-.stage.sharp .chip{opacity:1;transform:none}
-.chip.before{right:auto;left:4%;top:auto;bottom:18%;opacity:1;transform:none;transition:opacity .4s}
-.stage.sharp .chip.before,.stage:not(.live) .chip.before{opacity:0}
-.stage.static .chip{opacity:1;transform:none}
 
 /* ---------- Кнопки ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font:700 16px var(--fb);border-radius:var(--r3);padding:15px 24px;border:0;cursor:pointer;
@@ -196,20 +183,17 @@ footer button:hover{color:var(--ink)}
 .consent .btn{padding:11px 18px;font-size:15px}
 
 @media(max-width:860px){
- .hero{grid-template-columns:1fr;min-height:0;padding-top:0;gap:0}
- .stage{order:-1;height:400px;min-height:0;margin:0 -20px}
+ .hero{padding:32px 0 32px}
  .hero h1{font-size:clamp(34px,10vw,52px)}
  .hero p.sub{font-size:16px;margin-top:16px}
  .cta{margin-top:24px}
  .bench,.pubgrid,.faq{grid-template-columns:1fr;gap:20px}
  .drop{min-height:200px}
- .chip{top:10%;right:4%}
- .chip.before{left:4%;bottom:12%}
  .consent{font-size:14px;padding:12px 14px;gap:10px}
  .consent p{flex-basis:100%}
  .consent .btn{padding:10px 14px;font-size:14px}
 }
-@media(max-width:420px){.seg>label>span{font-size:14px}.stage{height:360px}}
+@media(max-width:420px){.seg>label>span{font-size:14px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -225,12 +209,6 @@ footer button:hover{color:var(--ink)}
   <h1 data-t="h1">TikTok 4K video uploader</h1>
   <p class="sub" data-t="sub">Prepare your clip in 1080p, 2K or 4K at 60 or 120 fps for TikTok and Instagram Reels. Processing runs in your browser. Your video leaves your device only if you choose to publish it to TikTok.</p>
   <div class="cta"><label class="btn big" for="f" data-t="cta">Choose a video</label><small data-t="ctasub">Free, no sign-up. Works best in Chrome or Safari.</small></div>
- </div>
- <div class="stage" id="stage">
-  <img class="poster" src="hero-poster.webp" alt="" width="571" height="1114" fetchpriority="high">
-  <canvas tabindex="0" role="img" aria-label="A phone showing a video that turns from blurry to sharp"></canvas>
-  <div class="chip before" aria-hidden="true"><span data-t="chipb">Typical upload</span></div>
-  <div class="chip" aria-hidden="true"><b>4K</b><span data-t="chipa">120 fps, sharp</span></div>
  </div>
 </header>
 

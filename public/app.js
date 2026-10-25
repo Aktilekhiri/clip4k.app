@@ -62,6 +62,7 @@ $("gaset").onclick=()=>{$("consent").hidden=false;$("gayes").focus()};
 // ================= 3D главный экран =================
 (function hero(){
  const stage=$("stage");
+ if(!stage)return;   // 3D-телефон убран со страницы
  const rm=matchMedia("(prefers-reduced-motion: reduce)").matches;
  const save=navigator.connection&&navigator.connection.saveData;
  const still=()=>stage.classList.add("static");
