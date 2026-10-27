@@ -77,6 +77,19 @@ async function tg(env, method, body) {
   const r = await fetch(`${env.TG_API || "https://api.telegram.org"}/bot${String(env.TG_BOT_TOKEN).trim()}/${method}`, init);   // TG_API — только для тестов
   return r.json().catch(() => ({ ok: false }));
 }
+const STAR_PRICE = 300;                 // ⭐ за доступ навсегда (≈ 500 сом)
+const SUPPORT = "@AktilekKaziev";
+const siteKb = { inline_keyboard: [[{ text: "🎬 Открыть clip4k.app", url: "https://clip4k.app" }], [{ text: `⭐ Купить доступ за ${STAR_PRICE} звёзд`, callback_data: "buy" }]] };
+const WELCOME = `Привет! Это Clip4K 👋
+
+TikTok часто сжимает видео до 576p. Clip4K готовит файл так, чтобы ролик выходил в 1440p / 2K и 60 fps.
+
+1. Откройте clip4k.app
+2. Загрузите видео и нажмите «Подготовить»
+3. Скачайте и публикуйте в TikTok
+
+🎁 3 видео бесплатно
+💎 Дальше — 500 сом навсегда (Mbank / O!Bank на сайте) или ${STAR_PRICE} ⭐ прямо здесь: /buy`;
 const isAdmin = (env, chatId) => env.TG_ADMIN_CHAT && String(chatId) === String(env.TG_ADMIN_CHAT).trim();
 
 async function handleTg(req, env) {
@@ -84,6 +97,11 @@ async function handleTg(req, env) {
   const u = await req.json().catch(() => ({}));
   if (u.callback_query) {
     const q = u.callback_query, chat = q.message && q.message.chat && q.message.chat.id;
+    if (q.data === "buy") {
+      await tg(env, "answerCallbackQuery", { callback_query_id: q.id });
+      await tg(env, "sendInvoice", { chat_id: chat, title: "Clip4K — доступ навсегда", description: `Безлимитная подготовка видео для TikTok в 2K/4K 60 fps. Ключ придёт сразу после оплаты, до ${MAX_DEVICES} устройств.`, payload: "lic", currency: "XTR", prices: [{ label: "Clip4K — доступ навсегда", amount: STAR_PRICE }] });
+      return json({ ok: true });
+    }
     if (!isAdmin(env, chat)) { await tg(env, "answerCallbackQuery", { callback_query_id: q.id, text: "Нет доступа" }); return json({ ok: true }); }
     const [act, id] = String(q.data || "").split(":");
     const o = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(id || "").first();
@@ -110,11 +128,46 @@ async function handleTg(req, env) {
     }
     return json({ ok: true });
   }
+  // Оплата звёздами: Telegram спрашивает «можно ли принять платёж» — отвечаем за 10 секунд
+  if (u.pre_checkout_query) {
+    const q = u.pre_checkout_query, okPayload = /^(lic|topup)$/.test(String(q.invoice_payload || "").split(":")[0]);
+    await tg(env, "answerPreCheckoutQuery", okPayload ? { pre_checkout_query_id: q.id, ok: true } : { pre_checkout_query_id: q.id, ok: false, error_message: "Счёт устарел, нажмите /buy ещё раз" });
+    return json({ ok: true });
+  }
   const msg = u.message;
+  if (msg && msg.successful_payment) {
+    const sp = msg.successful_payment, chat = msg.chat.id, who = msg.from ? (msg.from.username ? "@" + msg.from.username : msg.from.first_name || "") : "";
+    const kind = String(sp.invoice_payload || "").split(":")[0], charge = "tg:" + sp.telegram_payment_charge_id;
+    if (kind === "lic") {
+      // Telegram может прислать одно и то же событие повторно — не выдаём второй ключ
+      const had = await env.DB.prepare("SELECT key FROM licenses WHERE order_id = ?").bind(charge).first();
+      const key = had ? had.key : newKey();
+      if (!had) await env.DB.prepare("INSERT INTO licenses (key, created, order_id, devices, note) VALUES (?, ?, ?, '[]', ?)").bind(key, now(), charge, `stars ${sp.total_amount} ${who}`.slice(0, 100)).run();
+      await tg(env, "sendMessage", { chat_id: chat, text: `✅ Оплата получена, спасибо!\n\nВаш ключ: ${key}\n\nОткройте clip4k.app → «У меня уже есть ключ» → вставьте ключ. Работает навсегда, до ${MAX_DEVICES} устройств.`, reply_markup: siteKb });
+      if (env.TG_ADMIN_CHAT && !had) await tg(env, "sendMessage", { chat_id: String(env.TG_ADMIN_CHAT).trim(), text: `⭐ Покупка за звёзды: ${sp.total_amount} ⭐ от ${who}\nКлюч ${key}` });
+    } else {
+      await tg(env, "sendMessage", { chat_id: chat, text: `⭐ Получено ${sp.total_amount} звёзд. Спасибо!` });
+      if (env.TG_ADMIN_CHAT) await tg(env, "sendMessage", { chat_id: String(env.TG_ADMIN_CHAT).trim(), text: `⭐ Пополнение баланса бота: ${sp.total_amount} ⭐ от ${who}` });
+    }
+    return json({ ok: true });
+  }
   if (msg && msg.text) {
     const chat = msg.chat.id, t = msg.text.trim();
     const reply = text => tg(env, "sendMessage", { chat_id: chat, text });
-    if (/^\/(start|id)\b/.test(t)) await reply(`Ваш chat id: ${chat}\nВпишите его в секрет TG_ADMIN_CHAT, чтобы получать чеки.` + (isAdmin(env, chat) ? "\n\nВы администратор. Команды: /newkey [заметка], /stats, /revoke КЛЮЧ" : ""));
+    const invoice = (payload, title, description, amount) => tg(env, "sendInvoice", { chat_id: chat, title, description, payload, currency: "XTR", prices: [{ label: title, amount }] });
+    if (/^\/id\b/.test(t) || (/^\/start\b/.test(t) && (isAdmin(env, chat) || !env.TG_ADMIN_CHAT)))
+      await reply(`Ваш chat id: ${chat}\nВпишите его в секрет TG_ADMIN_CHAT, чтобы получать чеки.` + (isAdmin(env, chat) ? "\n\nВы администратор. Команды: /newkey [заметка], /stats, /revoke КЛЮЧ, /topup ЧИСЛО" : ""));
+    else if (/^\/start\b/.test(t))
+      await tg(env, "sendMessage", { chat_id: chat, text: WELCOME, reply_markup: siteKb });
+    else if (/^\/buy\b/.test(t))
+      await invoice("lic", "Clip4K — доступ навсегда", `Безлимитная подготовка видео для TikTok в 2K/4K 60 fps. Ключ придёт сразу после оплаты, до ${MAX_DEVICES} устройств.`, STAR_PRICE);
+    else if (/^\/topup\b/.test(t)) {
+      // пополнить баланс бота звёздами (например, чтобы оплатить рекламу). Может оплатить любой аккаунт.
+      const n = Math.floor(Number(t.replace(/^\/topup\s*/, "")) || 0);
+      if (n < 1 || n > 100000) await reply("Напишите количество звёзд, например: /topup 100");
+      else await invoice("topup", "Пополнение баланса Clip4K", `Перевод ${n} звёзд на баланс бота @clip4k_pay.`, n);
+    } else if (/^\/(paysupport|help)\b/.test(t))
+      await reply(`Вопросы по оплате и ключам: ${SUPPORT}\nЕсли ключ не пришёл — напишите, приложив дату оплаты.`);
     else if (isAdmin(env, chat) && /^\/newkey\b/.test(t)) {
       const key = newKey(), note = t.replace(/^\/newkey\s*/, "").slice(0, 100) || "вручную";
       await env.DB.prepare("INSERT INTO licenses (key, created, devices, note) VALUES (?, ?, '[]', ?)").bind(key, now(), note).run();
@@ -231,8 +284,12 @@ async function api(req, env, url) {
     if (!env.TG_SECRET || url.searchParams.get("s") !== String(env.TG_SECRET).trim())
       // подсказка без значений: какие секреты сайт видит
       return json({ error: "forbidden", TG_SECRET: env.TG_SECRET ? "есть, но не совпадает со ссылкой" : "НЕТ", TG_BOT_TOKEN: env.TG_BOT_TOKEN ? "есть" : "НЕТ", TG_ADMIN_CHAT: env.TG_ADMIN_CHAT ? "есть" : "НЕТ" }, 403);
-    const hook = await tg(env, "setWebhook", { url: `${url.origin}/api/tg`, secret_token: String(env.TG_SECRET).trim(), allowed_updates: ["message", "callback_query"] });
-    const cmds = await tg(env, "setMyCommands", { commands: [{ command: "start", description: "Показать chat id" }, { command: "newkey", description: "Создать ключ вручную" }, { command: "stats", description: "Статистика" }, { command: "revoke", description: "Отключить ключ" }] });
+    const hook = await tg(env, "setWebhook", { url: `${url.origin}/api/tg`, secret_token: String(env.TG_SECRET).trim(), allowed_updates: ["message", "callback_query", "pre_checkout_query"] });
+    const pub = [{ command: "start", description: "Что такое Clip4K" }, { command: "buy", description: `Доступ навсегда за ${STAR_PRICE} ⭐` }, { command: "paysupport", description: "Помощь с оплатой" }];
+    const cmds = await tg(env, "setMyCommands", { commands: pub });
+    if (env.TG_ADMIN_CHAT) await tg(env, "setMyCommands", { scope: { type: "chat", chat_id: Number(String(env.TG_ADMIN_CHAT).trim()) }, commands: [...pub, { command: "id", description: "Показать chat id" }, { command: "newkey", description: "Создать ключ вручную" }, { command: "stats", description: "Статистика" }, { command: "revoke", description: "Отключить ключ" }, { command: "topup", description: "Пополнить баланс бота звёздами" }] });
+    await tg(env, "setMyDescription", { description: "Clip4K: видео в TikTok в 2K 60 fps, а не 576p. 3 видео бесплатно, дальше доступ навсегда." });
+    await tg(env, "setMyShortDescription", { short_description: "TikTok в 2K 60 fps вместо 576p · clip4k.app" });
     return json({ webhook: hook, commands: cmds, adminChat: env.TG_ADMIN_CHAT ? "задан" : "НЕ задан — напишите боту /start и впишите chat id в TG_ADMIN_CHAT" });
   }
 
