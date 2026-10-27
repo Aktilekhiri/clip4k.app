@@ -165,7 +165,7 @@ async function handleTg(req, env) {
       // пополнить баланс бота звёздами (например, чтобы оплатить рекламу). Может оплатить любой аккаунт.
       const n = Math.floor(Number(t.replace(/^\/topup\s*/, "")) || 0);
       if (n < 1 || n > 100000) await reply("Напишите количество звёзд, например: /topup 100");
-      else await invoice("topup", "Пополнение баланса Clip4K", `Перевод ${n} звёзд на баланс бота @clip4k_pay.`, n);
+      else await invoice("topup", "Пополнение баланса Clip4K", `Перевод ${n} звёзд на баланс бота @clip4k_pay_bot.`, n);
     } else if (/^\/(paysupport|help)\b/.test(t))
       await reply(`Вопросы по оплате и ключам: ${SUPPORT}\nЕсли ключ не пришёл — напишите, приложив дату оплаты.`);
     else if (isAdmin(env, chat) && /^\/newkey\b/.test(t)) {
