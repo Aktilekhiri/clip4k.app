@@ -138,7 +138,7 @@ main{padding-top:clamp(32px,5vw,64px)}
 
 fieldset{border:0;margin:0;padding:0;min-width:0}
 fieldset:disabled{opacity:.4}
-.grp{margin:0 0 20px}
+.grp{margin:0 0 20px}.more{margin:4px 0 18px;border-top:1px solid var(--line);border-bottom:0;padding:0}.more>summary{justify-content:space-between;text-align:left;font-size:15px;color:var(--mut);padding:14px 0}.more>summary:hover{color:var(--ink)}.more[open]>summary{margin-bottom:6px}.more .grp{margin-bottom:12px}.more .chk{margin-bottom:8px}
 .grp>legend,.lbl{display:block;font:600 13px var(--fd);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:8px;padding:0}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);padding:4px}
 .seg label{position:relative;cursor:pointer}
@@ -303,13 +303,16 @@ footer button:hover{color:var(--ink)}
     <fieldset class="grp"><legend data-t="fl">Frame rate</legend>
      <div class="seg"><label><input type="radio" name="fps" value="30"><span>30 fps</span></label><label><input type="radio" name="fps" value="60" checked><span>60 fps</span></label><label><input type="radio" name="fps" value="120"><span>120 fps</span></label></div>
     </fieldset>
-    <fieldset class="grp"><legend data-t="ll">Format</legend>
-     <div class="seg"><label><input type="radio" name="lay" value="asis" checked><span data-t="l0">As is</span></label><label><input type="radio" name="lay" value="blur"><span><span data-t="l1">9:16 blur</span></span></label><label><input type="radio" name="lay" value="black"><span><span data-t="l2">9:16 black</span></span></label></div>
-    </fieldset>
    </fieldset>
    <p class="note" id="n120" hidden data-t="n120">120 fps from a 30 or 60 fps clip repeats frames. Through Zernio, TikTok officially accepts up to 60 fps, so 120 fps can get stuck in review.</p>
-   <label class="chk"><input type="checkbox" id="tail"><span data-t="tl">Skip re-encoding, only add the tail (an H.264 or HEVC MP4 with sound). Best for a finished 1080p 60 fps export</span></label>
-   <label class="chk" id="dbg" hidden><input type="checkbox" id="notail"><span>Debug: no tail (plain H.264)</span></label>
+   <details class="more" id="more">
+    <summary data-t="adv">More options</summary>
+    <fieldset class="grp" id="opts2"><legend data-t="ll">Format</legend>
+     <div class="seg"><label><input type="radio" name="lay" value="asis" checked><span data-t="l0">As is</span></label><label><input type="radio" name="lay" value="blur"><span><span data-t="l1">9:16 blur</span></span></label><label><input type="radio" name="lay" value="black"><span><span data-t="l2">9:16 black</span></span></label></div>
+    </fieldset>
+    <label class="chk"><input type="checkbox" id="tail"><span data-t="tl">Keep the original: no re-encoding, 1:1 quality. For a finished MP4 from CapCut, Alight Motion and similar apps</span></label>
+    <label class="chk" id="dbg" hidden><input type="checkbox" id="notail"><span>Debug: no tail (plain H.264)</span></label>
+   </details>
    <button class="btn big go" id="go" type="button" disabled data-t="go">Prepare video</button>
   </div>
  </div>
@@ -360,7 +363,7 @@ footer button:hover{color:var(--ink)}
  <h2 id="faq-h" data-t="fq">Questions</h2>
  <div>
   <details><summary data-t="q1">Why does TikTok make my video blurry?</summary><p data-t="a1">TikTok recompresses every upload and usually keeps a lower quality than the file you sent. A high-bitrate H.264 file survives that step with fewer artifacts.</p></details>
-  <details><summary data-t="q4">What does Clip4K do to my file?</summary><p data-t="a4">By default the clip is re-encoded in your browser (H.264, high bitrate); with "Skip re-encoding" the picture and sound stay as they are. Clip4K then adds a copy of the audio track with tiny empty samples at the end. In our tests TikTok then showed the clip at its original quality and bitrate. TikTok does not document why, so treat it as a workaround.</p></details>
+  <details><summary data-t="q4">What does Clip4K do to my file?</summary><p data-t="a4">By default the clip is re-encoded in your browser (H.264, high bitrate); with "Keep the original" (More options) the picture and sound stay as they are. Clip4K then adds a copy of the audio track with tiny empty samples at the end. In our tests TikTok then showed the clip at its original quality and bitrate. TikTok does not document why, so treat it as a workaround.</p></details>
   <details><summary data-t="q8">What do I get for 500 som?</summary><p data-t="a8">Lifetime access to Clip4K on 3 devices. It is a single payment, not a subscription. Clip4K uses a workaround: if TikTok changes its processing and it stops working, we will look for a new way, but we cannot guarantee one.</p></details>
   <details><summary data-t="q5">Is the quality guaranteed?</summary><p data-t="a5">No. It depends on TikTok, on how you publish and on your device. The extra data can make some players or editors open the file badly. If that happens, use a normal export.</p></details>
   <details><summary data-t="q6">Does 120 fps make the video smoother?</summary><p data-t="a6">Only if your source is 120 fps. For 30 or 60 fps clips the frames are repeated, so the file is marked 120 fps but motion does not get smoother.</p></details>
