@@ -32,6 +32,20 @@ pnomore:"TikTok says this account cannot post right now.",plong:"The video is lo
 big:"File is over 350 MB. Pick another one.",load:"Starting...",work:"Processing: ",tailwork:"Reading the file...",tailst:"Optimizing for TikTok...",done:"Done. Tap \"Download MP4\".",err:"Could not process this video. Open the site in Chrome or Safari, pick 1080p or another file.",nosup:"This browser cannot encode H.264. Open the site in Chrome, Edge or Safari, or tick \"Keep the original\" (More options) for an H.264 MP4 file.",nodec:"This browser cannot read this video's codec (often HEVC from an iPhone). Open the site in Safari or Chrome, or export the clip as H.264.",retry:"Your device cannot do this resolution, switching to 1080p...",retry60:"Your device cannot do 120 fps, switching to 60 fps...",fmt:"Could not read the result. Try another file or pick 1080p.",tailbad:"This mode needs a regular MP4 (H.264 or HEVC) without fragments. Untick \"Keep the original\".",
 inapp:"You opened the site inside an app (Telegram, Instagram, etc.). The video will not save here. Open the site in Safari: tap ⋯ or the compass icon and choose \"Open in Safari\".",inappA:"You opened the site inside an app (Telegram, Instagram, etc.). The video may not save here. Tap ⋮ and choose \"Open in browser\" or \"Open in Chrome\".",iosnote:"Choose \"Save Video\" in the menu."};
 
+Object.assign(T.ru,{rect:"Рекомендация для этого видео",recsrc:"Ваше видео:",recland:"горизонтальное",recvert:"вертикальное",recapply:"Применить",recok:"Применено ✓",
+ rkeep:"Оставить оригинал — без пересжатия",r916:"9:16 размытие",
+ wland:"Горизонтальное видео TikTok в наших тестах показывает в 576p. В формате 9:16 ролик идёт как вертикальный и сохраняет качество.",
+ wkeep:"Файл уже подходит для TikTok: MP4, вертикальный, высокое разрешение и частота кадров. Оставим его 1:1 — быстрее и без потерь.",
+ wlow:"Видео снято в {f} fps. TikTok покажет 60 fps, плавность останется как в оригинале.",
+ wmov:"Это файл MOV (iPhone), его нужно перекодировать в MP4.",
+ wsmall:"Разрешение видео небольшое. Выше {q} поднимать нет смысла — деталей не прибавится."});
+Object.assign(T.en,{rect:"Recommended for this video",recsrc:"Your video:",recland:"landscape",recvert:"vertical",recapply:"Apply",recok:"Applied ✓",
+ rkeep:"Keep the original — no re-encoding",r916:"9:16 blur",
+ wland:"In our tests TikTok shows landscape video at 576p. In 9:16 format the clip plays as vertical and keeps its quality.",
+ wkeep:"This file already suits TikTok: MP4, vertical, high resolution and frame rate. We keep it 1:1 — faster and lossless.",
+ wlow:"The video was shot at {f} fps. TikTok will show 60 fps; motion stays as smooth as the original.",
+ wmov:"This is a MOV file (iPhone), so it has to be re-encoded to MP4.",
+ wsmall:"The video resolution is small. Going above {q} adds no detail."});
 let L="en";
 const tr=k=>(T[L]&&T[L][k])??T.en[k]??"";
 // Текст, который сам переводится при смене языка: ключ + хвост (числа, ошибки)
@@ -43,6 +57,7 @@ function setL(l){
  document.querySelectorAll(".lang button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.l==l));
  document.title=l=="ru"?"TikTok 4K загрузчик видео – 4K, 60 и 120 fps для TikTok | Clip4K":"TikTok 4K Video Uploader – Prepare 4K, 60 and 120 fps Video for TikTok | Clip4K";
  if(zacc.length)renderAccLabels();
+ if(recData)renderRec();
 }
 document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>setL(b.dataset.l));
 
@@ -116,7 +131,67 @@ function pick(x){
  outBlob=null;pubRefresh();
  outName=x.name.replace(/\.[^.]+$/,"")+"_clip4k.mp4";
  stage(2);say("st","");idle();$("bar").style.display="none";
+ analyze(x);
 }
+
+// ---------- Рекомендация по файлу (только подсказка: обработку видео не меняет) ----------
+var recData=null;
+const QN={1920:"1080p",2560:"2K",3840:"4K"};
+async function analyze(f){
+ recData=null;$("rec").hidden=true;
+ try{
+  const {Input,ALL_FORMATS,BlobSource}=await lib();
+  const inp=new Input({source:new BlobSource(f),formats:ALL_FORMATS});
+  const v=await inp.getPrimaryVideoTrack();if(!v||file!==f)return;
+  let a=null;try{a=await inp.getPrimaryAudioTrack()}catch(e){}
+  const w=v.displayWidth||0,h=v.displayHeight||0;if(!w||!h)return;
+  let fps=0;try{fps=(await v.computePacketStats(120)).averagePacketRate||0}catch(e){}
+  if(file!==f)return;
+  const codec=String(v.codec||""),mp4=/\.mp4$/i.test(f.name)||f.type==="video/mp4",mov=/\.mov$/i.test(f.name)||f.type==="video/quicktime";
+  const land=w>h*1.05,long=Math.max(w,h);
+  const why=[];let r;
+  if(!land&&mp4&&(codec==="avc"||codec==="hevc")&&a&&long>=1900&&fps>=47){r={keep:true};why.push(["wkeep"])}
+  else{
+   const q=land?(long>=3400?3840:2560):(long>=3400?3840:long>=2300?2560:1920);
+   const fr=fps>=100?120:60;
+   r={keep:false,q,fps:fr,lay:land?"blur":"asis"};
+   if(land)why.push(["wland"]);
+   if(mov)why.push(["wmov"]);
+   if(fps&&fps<47)why.push(["wlow",{f:Math.round(fps)}]);
+   if(!land&&long<1900)why.push(["wsmall",{q:"1080p"}]);
+  }
+  recData={w,h,fps,codec,land,r,why};renderRec();
+ }catch(e){console.warn("analyze",e)}
+}
+function renderRec(){
+ const d=recData;if(!d)return;
+ const fps=d.fps?(Math.abs(d.fps-Math.round(d.fps))<0.05?Math.round(d.fps):d.fps.toFixed(1))+" fps":"";
+ const cod={avc:"H.264",hevc:"HEVC",vp9:"VP9",av1:"AV1"}[d.codec]||d.codec.toUpperCase();
+ $("recsrc").textContent=tr("recsrc")+" "+[d.w+"×"+d.h,fps,cod,tr(d.land?"recland":"recvert")].filter(Boolean).join(" · ");
+ $("recval").textContent=d.r.keep?tr("rkeep"):[d.r.lay==="blur"?tr("r916"):"",QN[d.r.q],d.r.fps+" fps"].filter(Boolean).join(" · ");
+ const ul=$("recwhy");ul.textContent="";
+ for(const [k,p] of d.why){const li=document.createElement("li");li.textContent=tr(k).replace(/\{(\w+)\}/g,(_,x)=>p&&p[x]!=null?p[x]:"");ul.appendChild(li)}
+ $("recgo").textContent=tr(recApplied()?"recok":"recapply");
+ $("rec").hidden=false;
+}
+function setRadio(n,v){const e=document.querySelector(`input[name="${n}"][value="${v}"]`);if(e&&!e.checked){e.checked=true;e.dispatchEvent(new Event("change",{bubbles:true}))}}
+function recApplied(){
+ const r=recData&&recData.r;if(!r)return false;
+ if(r.keep)return $("tail").checked;
+ return !$("tail").checked&&val("q")==String(r.q)&&val("fps")==String(r.fps)&&val("lay")===r.lay;
+}
+function applyRec(){
+ const r=recData&&recData.r;if(!r||busy)return;
+ if(r.keep){if(!$("tail").checked){$("tail").checked=true;$("tail").dispatchEvent(new Event("change"))}}
+ else{
+  if($("tail").checked){$("tail").checked=false;$("tail").dispatchEvent(new Event("change"))}
+  setRadio("q",r.q);setRadio("fps",r.fps);setRadio("lay",r.lay);
+  if(r.lay!=="asis")$("more").open=true;
+ }
+ renderRec();
+}
+$("recgo").onclick=applyRec;
+document.querySelectorAll('#opts input,#opts2 input,#tail').forEach(e=>e.addEventListener("change",()=>{if(recData)$("recgo").textContent=tr(recApplied()?"recok":"recapply")}));
 $("f").onchange=e=>{pick(e.target.files[0]);e.target.value=""};   // сброс: тот же файл можно выбрать снова
 $("tail").onchange=()=>{$("opts").disabled=$("opts2").disabled=$("tail").checked;if($("tail").checked)$("more").open=true;idle()};
 document.querySelectorAll('input[name="fps"]').forEach(r=>r.addEventListener("change",()=>{$("n120").hidden=val("fps")!=="120"}));
