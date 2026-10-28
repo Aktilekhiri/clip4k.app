@@ -120,7 +120,7 @@ def frame(i):
     dr.line([CX, cy - 30 * SS, CX, cy + 30 * SS], fill=(255, 230, 230, 200), width=SS)
     for j, s in enumerate(["SIGNAL 99.8%", "BITRATE ▮▮▮▮▮▮▮▯", f"FRAME {i % FPS + 1:02d}/{FPS}"]):
         dr.text((CX - rad - 40 * SS, cy + rad + (24 + 18 * j) * SS), s, font=fnt_m, fill=(255, 210, 210, 200), anchor="rm")
-    for j, s in enumerate(["2160 × 3840", "H.264 HIGH", "60.00 FPS"]):
+    for j, s in enumerate(["2160 × 3840", "H.264 HIGH", "120.00 FPS"]):
         dr.text((CX + rad + 40 * SS, cy + rad + (24 + 18 * j) * SS), s, font=fnt_m, fill=(255, 210, 210, 200), anchor="lm")
     # искры
     for p in SP:
