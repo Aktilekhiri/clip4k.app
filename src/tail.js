@@ -234,6 +234,23 @@ const enc = s => new TextEncoder().encode(s);
 function box(type, ...parts) { return { type, payload: concat(parts.map(p => typeof p === "string" ? enc(p) : p)), children: null }; }
 function u32b(v) { const b = new Uint8Array(4); w32(b, 0, v); return b; }
 
+// Подпись программы (©too) из исходного файла, например «Lavf60.16.100». Void сохраняет её как есть;
+// свою подпись (clip4k.app и т.п.) TikTok с ноября 2026, похоже, распознаёт. Нет подписи — ставим обычную ffmpeg.
+export const FALLBACK_TOOL = "Lavf60.16.100";
+export function originalTool(moov) {
+  const t = [0xa9, 0x74, 0x6f, 0x6f];   // ©too
+  for (let i = 4; i + 24 < moov.length; i++) {
+    if (moov[i] !== t[0] || moov[i + 1] !== t[1] || moov[i + 2] !== t[2] || moov[i + 3] !== t[3]) continue;
+    const d = i + 4;   // внутри: [size]data[ver/flags 4][locale 4] текст
+    if (moov[d + 4] !== 0x64 || moov[d + 5] !== 0x61 || moov[d + 6] !== 0x74 || moov[d + 7] !== 0x61) continue;
+    const size = u32(moov, d), raw = moov.subarray(d + 16, d + size);
+    let end = raw.length; while (end && raw[end - 1] === 0) end--;
+    const text = new TextDecoder().decode(raw.subarray(0, end));
+    if (/^[\x20-\x7e]{1,64}$/.test(text)) return text;
+  }
+  return null;
+}
+
 function toolTag(text) {
   const data = box("data", u32b(1), u32b(0), text, new Uint8Array([0]));
   const too = { type: "©too", payload: serialize(data), children: null };
@@ -253,7 +270,7 @@ function trimHdlr(trak) {
 
 // layout "audio": как у RTX Fury. Если в файле нет звука — "chunk" (как Termux-скрипты).
 // Итоговый файл: [ftyp][moov'][mdat как был][хвост].
-export function buildHead({ ftyp, moov, mdatPos, mdatSize, layout = "audio", pad: padOpt, tag = "clip4k.app", mult = 9 }) {
+export function buildHead({ ftyp, moov, mdatPos, mdatSize, layout = "audio", pad: padOpt, tag = null, mult = 9 }) {
   const mo = parseBoxes(moov, 0, moov.length);
   if (mo.length !== 1 || mo[0].type !== "moov") throw new Error("ожидался один блок moov");
   const M = mo[0];
@@ -295,7 +312,7 @@ export function buildHead({ ftyp, moov, mdatPos, mdatSize, layout = "audio", pad
     const stsc = find(stbl, "stsc"), sp = stsc.payload, so = new Uint8Array(sp.length + 12);
     so.set(sp); w32(so, 4, u32(sp, 4) + 1); w32(so, sp.length, nCh + 1); w32(so, sp.length + 4, pad); w32(so, sp.length + 8, 1);
     stsc.payload = so;
-    vid.children = vid.children.filter(c => c.type !== "udta").concat([toolTag(tag)]);
+    vid.children = vid.children.filter(c => c.type !== "udta").concat([toolTag(tag || originalTool(moov) || FALLBACK_TOOL)]);
     m.children = m.children.filter(c => c.type !== "udta").concat([copy]);
     // размер: смещение хвоста пока 0, ширина поля от значения не зависит
     appendChunkOffset(copy, 0);
