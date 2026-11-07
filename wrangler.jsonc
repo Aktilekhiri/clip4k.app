@@ -10,7 +10,10 @@
   ],
   "observability": { "enabled": true },
   // переменные, добавленные в панели Cloudflare, не стираются при выкладке с GitHub
-  "keep_vars": true
+  "keep_vars": true,
+  "workers_dev": true,
+  // Finik шлёт уведомления об оплате сюда (служебный адрес Cloudflare, без защиты домена от ботов — как у diamond.kg)
+  "vars": { "FINIK_WEBHOOK_BASE": "https://green-cell-f142.aktilek123z.workers.dev" }
   // Секреты задаются в Cloudflare → Settings → Variables and Secrets:
   //   TG_BOT_TOKEN, TG_ADMIN_CHAT, TG_SECRET
 }

@@ -55,6 +55,7 @@ async function ensureSchema(env) {
   for (const [c, type] of [["amount", "REAL"], ["method", "TEXT"], ["pay_url", "TEXT"], ["fee", "REAL"], ["renew_key", "TEXT"]])
     if (!oc.includes(c)) await env.DB.prepare(`ALTER TABLE orders ADD COLUMN ${c} ${type}`).run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS payments (tx_id TEXT PRIMARY KEY, order_id TEXT NOT NULL, amount REAL NOT NULL, created INTEGER NOT NULL)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS hooklog (ts INTEGER NOT NULL, host TEXT, result TEXT, order_id TEXT, amount REAL)").run();   // каждое уведомление Finik — для разбора
   schemaOk = true;
 }
 const fmtDate = ms => { const d = new Date(ms + 6 * 3600e3); return `${String(d.getUTCDate()).padStart(2, "0")}.${String(d.getUTCMonth() + 1).padStart(2, "0")}.${d.getUTCFullYear()}`; };   // по Бишкеку
@@ -327,7 +328,7 @@ async function api(req, env, url) {
       env.DB.prepare("INSERT INTO ipuse (ip, ts, kind) VALUES (?, ?, 'pay')").bind(ip, now()),
     ]);
     const r = await createFinikPayment(env, { id, amount: PRICE, description: `Clip4K — ${renew ? "продление" : "подписка"} на ${DAYS} дней` },
-      `${url.origin}/?paid=${id}&t=${token}#buy`, `${url.origin}/api/finik/webhook`);
+      `${url.origin}/?paid=${id}&t=${token}#buy`, `${String(env.FINIK_WEBHOOK_BASE || url.origin).replace(/\/+$/, "")}/api/finik/webhook`);
     if (r.error) {
       await env.DB.prepare("UPDATE orders SET status = 'failed' WHERE id = ?").bind(id).run();
       console.error("finik create", r.error);
@@ -340,11 +341,18 @@ async function api(req, env, url) {
   // Finik присылает подписанное уведомление после оплаты
   if (p === "/api/finik/webhook" && req.method === "POST") {
     if (!env.FINIK_PUBLIC_KEY) return new Response("off", { status: 503 });
+    const host = url.host;
+    const log = (result, id = null, amount = null) => env.DB.prepare("INSERT INTO hooklog (ts, host, result, order_id, amount) VALUES (?, ?, ?, ?, ?)").bind(now(), host, result, id, amount).run().catch(() => {});
     const w = await readFinikWebhook(env, req);
-    if (w.bad) { console.log("finik webhook:", w.bad); return new Response("bad " + w.bad, { status: w.bad === "json" ? 400 : 401 }); }
+    if (w.bad) {
+      console.log("finik webhook:", w.bad); await log("bad " + w.bad);
+      await notifyAdmin(env, `⚠️ Clip4K: пришло уведомление Finik, но оно не прошло проверку (${w.bad}, ${host}). Если клиент оплатил — выдайте ключ вручную: /newkey 30 заметка`);
+      return new Response("bad " + w.bad, { status: w.bad === "json" ? 400 : 401 });
+    }
     const body = w.body, st = String(body.status || "").toLowerCase();
-    if (!["success", "succeeded"].includes(st)) return new Response("ignored");
     const f = body.fields || {}, id = String(f.paymentId || "").slice(0, 20), tx = String(body.transactionId || body.id || ""), paid = Number(body.amount) || 0;
+    await log(st || "no status", id, paid);
+    if (!["success", "succeeded"].includes(st)) return new Response("ignored");
     if (!id || !tx) return new Response("no ids");
     const ins = await env.DB.prepare("INSERT OR IGNORE INTO payments (tx_id, order_id, amount, created) VALUES (?, ?, ?, ?)").bind(tx, id, paid, now()).run();
     if (!ins.meta.changes) return new Response("duplicate");
