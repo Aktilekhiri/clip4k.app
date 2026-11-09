@@ -258,6 +258,8 @@ export function splitMp4(input) {
 // Сборка итогового файла по ответу сервера.
 export function assemble(parts, head) {
   const pad = head.pad;
+  // rtx2: сервер прислал [часть до mdat][часть после mdat], pad — длина первой части
+  if (head.layout === "rtx2") return new Blob([head.moov.subarray(0, pad), parts.mdat, head.moov.subarray(pad)], { type: "video/mp4" });
   let tail;
   if (head.layout === "audio") {
     tail = new Uint8Array(8 * pad + 8);

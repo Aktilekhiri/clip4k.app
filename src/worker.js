@@ -15,7 +15,7 @@
 //   TG_SECRET      любая длинная случайная строка (защита вебхука и /api/setup)
 //   FINIK_API_KEY, FINIK_PRIVATE_KEY, FINIK_PUBLIC_KEY, FINIK_ACCOUNT_ID — те же, что у diamond.kg (см. src/finik.js)
 
-import { buildHead } from "./tail.js";
+import { buildHead, buildRtx2 } from "./tail.js";
 import { finikReady, createFinikPayment, readFinikWebhook, PAY_MIN } from "./finik.js";
 
 const TRIALS = 3;            // бесплатных видео на устройство
@@ -293,7 +293,11 @@ async function api(req, env, url) {
     if (body.length > MAX_HEAD || ftypLen > body.length) return json({ error: "big" }, 413);
     let head;
     try {
-      head = buildHead({ ftyp: body.subarray(0, ftypLen), moov: body.subarray(ftypLen), mdatPos, mdatSize, layout: layout === "chunk" ? "chunk" : "audio", pad });
+      if (layout === "rtx2") {
+        const r = buildRtx2({ moov: body.subarray(ftypLen), mdatPos, mdatSize });
+        const out = new Uint8Array(r.pre.length + r.post.length); out.set(r.pre); out.set(r.post, r.pre.length);
+        head = { moov: out, layout: "rtx2", pad: r.pre.length };   // pad = длина части до mdat
+      } else head = buildHead({ ftyp: body.subarray(0, ftypLen), moov: body.subarray(ftypLen), mdatPos, mdatSize, layout: layout === "chunk" ? "chunk" : "audio", pad });
     } catch (e) { return json({ error: "file", detail: String(e.message || e).slice(0, 120) }, 422); }
 
     let left = null;

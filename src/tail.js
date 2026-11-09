@@ -3,7 +3,7 @@
 // а клиент собирает файл: ftyp + moov' + исходный mdat + хвост.
 // Логика совпадает с прежним public/tail.js (проверено байт в байт на файле RTX Fury).
 
-const CONTAINERS = new Set(["moov", "trak", "mdia", "minf", "stbl"]);
+const CONTAINERS = new Set(["moov", "trak", "mdia", "minf", "stbl", "edts"]);
 
 export const DEFAULT_PAD = 9112;
 // Один пустой семпл: длина NAL = 4 и сам NAL из четырёх нулей (тип 0).
@@ -345,4 +345,134 @@ export function buildHead({ ftyp, moov, mdatPos, mdatSize, layout = "audio", pad
   const bytes = build(newMdat - mdatPos, newMdat + mdatSize + 8);
   if (bytes.length !== probe.length) throw new Error("внутренняя ошибка: размер moov изменился");
   return { moov: bytes, layout: "chunk", pad };
+}
+
+// ---------------------------------------------------------------------------
+// Способ RTX Fury от 10.11.2026 («optimizer»), проверен: 1080p60 38 Мбит/с в TikTok.
+// Итоговый файл: [ftyp isom][free: копия moov][free 8][mdat как был][mdat: 17 тихих кадров AAC][moov].
+// В последнем moov звук удлинён тихими кадрами, у части из них второе описание формата (stsd #2),
+// и добавлена третья дорожка — копия звука. На файле RTX совпадает байт в байт.
+// ---------------------------------------------------------------------------
+const SILENT_STEREO = new Uint8Array([0x21, 0x10, 0x04, 0x60, 0x8c, 0x1c]);   // тихий кадр AAC LC, стерео
+export const RTX2_SILENT = 17;
+const hexb = s => Uint8Array.from(s.match(/../g), h => parseInt(h, 16));
+const STSD2_48K = hexb("000000716d703461000000000000000100000000000000000002001000000000bb8000000000003965736473000000000380808028000200048080801a401500000000030000000300000580808008118004c0400020000680808001020000001462747274000000000003000000030000");
+const AAC_RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+
+function stsd2For(rate) {
+  const f = AAC_RATES.indexOf(rate);
+  if (f < 3) throw new Error("частота звука " + rate + " не поддерживается");
+  const b = STSD2_48K.slice();
+  b[32] = (rate >>> 8) & 255; b[33] = rate & 255;                 // частота в mp4a (16.16)
+  let a = -1;                                                       // AudioSpecificConfig после 05 80 80 80 08
+  for (let i = 0; i < b.length - 5; i++) if (b[i] === 5 && b[i + 1] === 0x80 && b[i + 2] === 0x80 && b[i + 3] === 0x80 && b[i + 4] === 8) { a = i + 5; break; }
+  if (a < 0) throw new Error("внутренняя ошибка: stsd2");
+  b[a] = 0x10 | (f >> 1); b[a + 1] = ((f & 1) << 7) | (b[a + 1] & 0x7f);
+  b[a + 2] = (b[a + 2] & 0xfc) | (f >> 2); b[a + 3] = ((f & 3) << 6) | (b[a + 3] & 0x3f);
+  return b;
+}
+const u64 = (p, o) => u32(p, o) * 4294967296 + u32(p, o + 4);
+function w64(p, o, v) { w32(p, o, Math.floor(v / 4294967296)); w32(p, o + 4, v % 4294967296); }
+// читаем/пишем «длительность» в mvhd/tkhd/mdhd: [смещение v0, смещение v1]
+const getDur = (box, o0, o1) => box.payload[0] === 1 ? u64(box.payload, o1) : u32(box.payload, o0);
+function setDur(box, o0, o1, v) {
+  const p = box.payload.slice();
+  if (p[0] === 1) w64(p, o1, v); else { if (v >= 4294967296) throw new Error("слишком длинное видео"); w32(p, o0, v); }
+  box.payload = p;
+}
+// udta как у ffmpeg: meta(hdlr mdir/appl, ilst ©too)
+function ffUdta(text) {
+  const data = box("data", u32b(1), u32b(0), text);
+  const too = { type: "©too", payload: serialize(data), children: null };
+  const hdlr = box("hdlr", new Uint8Array(8), "mdirappl", new Uint8Array(9));
+  return box("udta", serialize(box("meta", new Uint8Array(4), serialize(hdlr), serialize(box("ilst", serialize(too))))));
+}
+const cloneTree = b => { const s = serialize(b); return { type: b.type, payload: null, children: parseTree(s, 8, s.length) }; };
+
+export function buildRtx2({ moov, mdatPos, mdatSize, tag = null, silent = RTX2_SILENT }) {
+  const mo = parseBoxes(moov, 0, moov.length);
+  if (mo.length !== 1 || mo[0].type !== "moov") throw new Error("ожидался один блок moov");
+  const m = { type: "moov", payload: null, children: parseTree(moov, mo[0].hdr, mo[0].size) };
+  const traks = findAll(m, "trak");
+  if (!traks.some(t => handlerType(t) === "vide")) throw new Error("нет видеодорожки");
+  const aud = traks.find(t => handlerType(t) === "soun");
+  if (!aud) throw new Error("нет звука");
+  const sd = find(stblOf(aud), "stsd").payload;
+  if (u32(sd, 4) !== 1 || cc(sd, 12) !== "mp4a") throw new Error("звук должен быть AAC");
+  const channels = (sd[32] << 8) | sd[33], rate = (sd[40] << 8) | sd[41];
+  if (channels !== 2) throw new Error("нужен стерео-звук");
+  const stsd2 = stsd2For(rate);
+  const mvhd = find(m, "mvhd");
+  const mvts = u32(mvhd.payload, mvhd.payload[0] === 1 ? 20 : 12);
+
+  // 1) moov как после обычной перепаковки ffmpeg: у дорожек есть edts, в конце udta с ©too
+  for (const t of traks) {
+    if (find(t, "edts")) continue;
+    const el = new Uint8Array(20); w32(el, 4, 1);
+    w32(el, 8, Math.min(getDur(find(t, "tkhd"), 20, 28), 4294967295)); w32(el, 16, 0x10000);
+    const tk = t.children.findIndex(c => c.type === "tkhd");
+    t.children.splice(tk + 1, 0, { type: "edts", payload: null, children: [box("elst", el)] });
+  }
+  const tool = tag || originalTool(moov) || FALLBACK_TOOL;
+  m.children = m.children.filter(c => c.type !== "udta" && c.type !== "meta").concat([ffUdta(tool)]);
+
+  // 2) раскладка: [ftyp][free(moov)][free 8][mdat][mdat тишина][moov]
+  const newMdat = FTYP_ISOM.length + boxSize(m) + 8;
+  shiftAllOffsets(m, newMdat - mdatPos);
+  const decoy = serialize(m);
+  const silentPos = newMdat + mdatSize + 8, nA = Math.ceil(silent / 2), nB = silent - nA;
+
+  // 3) последний moov: удлиняем звук тишиной и добавляем копию звуковой дорожки
+  const mm = cloneTree(m);
+  const a = findAll(mm, "trak").find(t => handlerType(t) === "soun");
+  const md = find(a, "mdia"), mdhd = find(md, "mdhd");
+  const ats = u32(mdhd.payload, mdhd.payload[0] === 1 ? 20 : 12);
+  const adur = getDur(mdhd, 16, 24) + silent * 1024;
+  setDur(mdhd, 16, 24, adur);
+  const ms = Math.floor(adur * mvts / ats) + 1;
+  setDur(find(a, "tkhd"), 20, 28, ms);
+  const elst = find(find(a, "edts"), "elst");
+  if (elst && u32(elst.payload, 4) === 1) { const p = elst.payload.slice(); if (p[0] === 1) w64(p, 8, ms); else w32(p, 8, ms); elst.payload = p; }
+  const st = stblOf(a);
+  const stts = find(st, "stts"), e = readStts(stts.payload);
+  if (e.length && e[e.length - 1][1] === 1024) e[e.length - 1][0] += silent; else e.push([silent, 1024]);
+  stts.payload = writeStts(e);
+  const stsz = find(st, "stsz"), uni = u32(stsz.payload, 4), cnt = u32(stsz.payload, 8);
+  const nz = new Uint8Array(12 + 4 * (cnt + silent)); w32(nz, 8, cnt + silent);
+  if (uni) for (let i = 0; i < cnt; i++) w32(nz, 12 + 4 * i, uni); else nz.set(stsz.payload.subarray(12, 12 + 4 * cnt), 12);
+  for (let i = 0; i < silent; i++) w32(nz, 12 + 4 * (cnt + i), SILENT_STEREO.length);
+  stsz.payload = nz;
+  const co = find(st, "stco") || find(st, "co64"), wide = co.type === "co64", nCh = u32(co.payload, 4);
+  const cp = new Uint8Array(co.payload.length + (wide ? 16 : 8)); cp.set(co.payload); w32(cp, 4, nCh + 2);
+  const offB = silentPos + SILENT_STEREO.length * nA;
+  if (wide) { w64(cp, co.payload.length, silentPos); w64(cp, co.payload.length + 8, offB); }
+  else { if (offB >= 4294967296) throw new Error("файл больше 4 ГБ не поддерживается"); w32(cp, co.payload.length, silentPos); w32(cp, co.payload.length + 4, offB); }
+  co.payload = cp;
+  const sbgp = find(st, "sbgp");
+  if (sbgp && cc(sbgp.payload, 4) === "roll" && sbgp.payload[0] === 0) {
+    const p = sbgp.payload, n = u32(p, 8), q = new Uint8Array(p.length + 8);
+    q.set(p); w32(q, 8, n + 1); w32(q, p.length, silent); sbgp.payload = q;
+  }
+  const stsc = find(st, "stsc"), sp = stsc.payload;
+  const withStsc = desc => { const q = new Uint8Array(sp.length + 24); q.set(sp); w32(q, 4, u32(sp, 4) + 2);
+    w32(q, sp.length, nCh + 1); w32(q, sp.length + 4, nA); w32(q, sp.length + 8, 1);
+    w32(q, sp.length + 12, nCh + 2); w32(q, sp.length + 16, nB); w32(q, sp.length + 20, desc); return q; };
+  const copy = cloneTree(a);                                           // третья дорожка: всё одним описанием
+  stsc.payload = withStsc(2);
+  const stsd = find(st, "stsd"), s0 = stsd.payload, s2 = new Uint8Array(s0.length + stsd2.length);
+  s2.set(s0); w32(s2, 4, 2); s2.set(stsd2, s0.length); stsd.payload = s2;
+  find(stblOf(copy), "stsc").payload = withStsc(1);
+  const mv = find(mm, "mvhd"), mp = mv.payload.slice(), nextId = u32(mp, mp.length - 4);
+  w32(mp, mp.length - 4, nextId + 1); mv.payload = mp;
+  if (getDur(mv, 16, 24) < ms) setDur(mv, 16, 24, ms);
+  const ctk = find(copy, "tkhd"), tp = ctk.payload.slice(); w32(tp, tp[0] === 1 ? 20 : 12, nextId); ctk.payload = tp;
+  const last = mm.children.map(c => c.type).lastIndexOf("trak");
+  mm.children.splice(last + 1, 0, copy);
+
+  const tail = new Uint8Array(8 + SILENT_STEREO.length * silent);
+  w32(tail, 0, tail.length); tail.set([0x6d, 0x64, 0x61, 0x74], 4);
+  for (let i = 0; i < silent; i++) tail.set(SILENT_STEREO, 8 + SILENT_STEREO.length * i);
+  const free8 = new Uint8Array([0, 0, 0, 8, 0x66, 0x72, 0x65, 0x65]);
+  const fr = decoy.slice(); fr.set([0x66, 0x72, 0x65, 0x65], 4);       // moov → free
+  return { pre: concat([FTYP_ISOM, fr, free8]), post: concat([tail, serialize(mm)]), layout: "rtx2" };
 }
