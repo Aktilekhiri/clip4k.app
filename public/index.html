@@ -130,6 +130,10 @@ main{padding-top:clamp(32px,5vw,64px)}
 .drop:hover::before,.drop:hover::after,.drop.on::before,.drop.on::after{width:30px;height:30px}
 .drop:focus-within{outline:2px solid var(--acc);outline-offset:3px}
 .drop input{position:absolute;opacity:0;width:1px;height:1px}
+.pickcol{display:flex;flex-direction:column;gap:6px;min-width:0}
+.altpick{position:relative;display:flex;align-items:center;justify-content:center;min-height:44px;padding:8px 12px;text-align:center;color:var(--ink);font-size:15px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;border-radius:var(--r3)}
+.altpick input{position:absolute;opacity:0;width:1px;height:1px}
+.altpick:focus-within{outline:2px solid var(--acc);outline-offset:2px}
 .drop .frame{width:44px;height:76px;border:2px solid var(--ink);border-radius:8px;position:relative;margin-bottom:6px}
 .drop .frame::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-35%,-50%);border-left:12px solid var(--acc);border-top:8px solid transparent;border-bottom:8px solid transparent}
 .drop strong{font:700 24px var(--fd);letter-spacing:.04em;text-transform:uppercase}
@@ -289,6 +293,7 @@ footer button:hover{color:var(--ink)}
  <ol class="steps" id="steps"><li class="on" data-t="s1">Видео</li><li data-t="s2">Обработка</li><li data-t="s3">Скачать</li></ol>
  <p id="warn" role="alert" hidden></p>
  <div class="bench">
+  <div class="pickcol">
   <label class="drop" id="drop">
    <input type="file" id="f" accept="video/*">
    <i class="frame" aria-hidden="true"></i>
@@ -296,6 +301,8 @@ footer button:hover{color:var(--ink)}
    <span data-t="dropsub">Перетащите сюда или нажмите. Любой формат, до 350 МБ.</span>
    <span class="fn" id="fn"></span>
   </label>
+  <label class="altpick" id="altpick" hidden><input type="file" id="f2"><span data-t="altpick">Нет нужного видео? Выбрать из файлов телефона</span></label>
+  </div>
   <div>
    <div class="rec" id="rec" hidden aria-live="polite">
     <p class="rec-h" data-t="rect">Рекомендация для этого видео</p>
