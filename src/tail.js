@@ -476,3 +476,87 @@ export function buildRtx2({ moov, mdatPos, mdatSize, tag = null, silent = RTX2_S
   const fr = decoy.slice(); fr.set([0x66, 0x72, 0x65, 0x65], 4);       // moov → free
   return { pre: concat([FTYP_ISOM, fr, free8]), post: concat([tail, serialize(mm)]), layout: "rtx2" };
 }
+
+// ---------------------------------------------------------------------------
+// Способ RTX Fury от 14.11.2026. Контейнер — обычная перепаковка ffmpeg (+faststart):
+// [ftyp isom][moov][free 8][mdat]. Трюк внутри звука: последние 4 кадра AAC заменены кадром
+// с «program config element», который объявляет раскладку из двух каналов LFE. Размеры кадров
+// не меняются (остаток забит нулями). На файле RTX совпадает байт в байт.
+// ---------------------------------------------------------------------------
+const PCE_FRAME = hexb("a09800400128006400000350000038");   // PCE (2×LFE, 48 кГц) + два тихих LFE + конец
+export const RTX3_FRAMES = 4;
+
+function descLen(p, o) { let n = 0; for (let i = 0; i < 4; i++) { const b = p[o++]; n = (n << 7) | (b & 0x7f); if (!(b & 0x80)) break; } return [n, o]; }
+// AudioSpecificConfig из stsd/mp4a/esds
+function readAsc(sd) {
+  let e = -1;
+  for (let i = 16; i + 4 < sd.length; i++) if (sd[i] === 0x65 && sd[i + 1] === 0x73 && sd[i + 2] === 0x64 && sd[i + 3] === 0x73) { e = i + 8; break; }   // esds + версия
+  if (e < 0 || sd[e] !== 3) throw new Error("звук: нет описания AAC");
+  let [, o] = descLen(sd, e + 1); o += 3;                       // ES_ID, флаги
+  if (sd[o] !== 4) throw new Error("звук: нет описания AAC");
+  [, o] = descLen(sd, o + 1);
+  if (sd[o] !== 0x40) throw new Error("звук должен быть AAC");
+  o += 13;                                                       // тип, буфер, битрейты
+  if (sd[o] !== 5) throw new Error("звук: нет описания AAC");
+  let n; [n, o] = descLen(sd, o + 1);
+  if (n < 2) throw new Error("звук: нет описания AAC");
+  const b0 = sd[o], b1 = sd[o + 1];
+  return { obj: b0 >> 3, sf: ((b0 & 7) << 1) | (b1 >> 7), ch: (b1 >> 3) & 15, frame960: (b1 >> 2) & 1 };
+}
+// Где в файле лежат последние n семплов дорожки: [{pos, len}] (pos — от начала файла)
+function lastSamples(stbl, n) {
+  const zs = find(stbl, "stsz").payload, uni = u32(zs, 4), cnt = u32(zs, 8);
+  const size = i => uni || u32(zs, 12 + 4 * i);
+  const co = find(stbl, "stco") || find(stbl, "co64"), wide = co.type === "co64", nCh = u32(co.payload, 4);
+  const chunkOff = c => wide ? u64(co.payload, 8 + 8 * c) : u32(co.payload, 8 + 4 * c);
+  const sc = find(stbl, "stsc").payload, ne = u32(sc, 4), per = new Array(nCh);
+  for (let i = 0; i < ne; i++) {
+    const first = u32(sc, 8 + 12 * i) - 1, spc = u32(sc, 12 + 12 * i), next = i + 1 < ne ? u32(sc, 8 + 12 * (i + 1)) - 1 : nCh;
+    for (let c = first; c < next && c < nCh; c++) per[c] = spc;
+  }
+  const out = []; let s = 0;
+  for (let c = 0; c < nCh; c++) {
+    let pos = chunkOff(c);
+    for (let k = 0; k < per[c] && s < cnt; k++, s++) { if (s >= cnt - n) out.push({ pos, len: size(s) }); pos += size(s); }
+  }
+  if (s !== cnt) throw new Error("звук: таблицы не сходятся");
+  return out;
+}
+
+export function buildRtx3({ moov, mdatPos, mdatSize, tag = null, frames = RTX3_FRAMES }) {
+  const mo = parseBoxes(moov, 0, moov.length);
+  if (mo.length !== 1 || mo[0].type !== "moov") throw new Error("ожидался один блок moov");
+  const m = { type: "moov", payload: null, children: parseTree(moov, mo[0].hdr, mo[0].size) };
+  const traks = findAll(m, "trak");
+  if (!traks.some(t => handlerType(t) === "vide")) throw new Error("нет видеодорожки");
+  const aud = traks.find(t => handlerType(t) === "soun");
+  if (!aud) throw new Error("нет звука");
+  const st = stblOf(aud), sd = find(st, "stsd").payload;
+  if (u32(sd, 4) !== 1 || cc(sd, 12) !== "mp4a") throw new Error("звук должен быть AAC");
+  const asc = readAsc(sd);
+  if (asc.obj !== 2 || asc.frame960 || (asc.ch !== 1 && asc.ch !== 2) || asc.sf > 12) throw new Error("звук должен быть AAC-LC, моно или стерео");
+  const fill = PCE_FRAME.slice(); fill[1] = (fill[1] & 0x87) | (asc.sf << 3);        // частота в PCE
+
+  // какие кадры заменяем: последние, в которые помещается наш кадр
+  const tailS = lastSamples(st, frames * 3).filter(s => s.len >= fill.length).slice(-frames);
+  if (!tailS.length) throw new Error("звук: слишком короткие кадры");
+  const patches = tailS.map(s => {
+    const p = s.pos - mdatPos;
+    if (p < 8 || p + s.len > mdatSize) throw new Error("звук лежит вне mdat");
+    return [p, s.len];
+  });
+
+  // moov как после перепаковки ffmpeg: edts у дорожек, udta с ©too в конце, moov перед mdat
+  for (const t of traks) {
+    if (find(t, "edts")) continue;
+    const el = new Uint8Array(20); w32(el, 4, 1);
+    w32(el, 8, Math.min(getDur(find(t, "tkhd"), 20, 28), 4294967295)); w32(el, 16, 0x10000);
+    const tk = t.children.findIndex(c => c.type === "tkhd");
+    t.children.splice(tk + 1, 0, { type: "edts", payload: null, children: [box("elst", el)] });
+  }
+  m.children = m.children.filter(c => c.type !== "udta" && c.type !== "meta").concat([ffUdta(tag || originalTool(moov) || FALLBACK_TOOL)]);
+  const newMdat = FTYP_ISOM.length + boxSize(m) + 8;
+  shiftAllOffsets(m, newMdat - mdatPos);
+  const free8 = new Uint8Array([0, 0, 0, 8, 0x66, 0x72, 0x65, 0x65]);
+  return { pre: concat([FTYP_ISOM, serialize(m), free8]), patches, fill, layout: "rtx3" };
+}

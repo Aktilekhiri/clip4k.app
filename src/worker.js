@@ -15,7 +15,7 @@
 //   TG_SECRET      любая длинная случайная строка (защита вебхука и /api/setup)
 //   FINIK_API_KEY, FINIK_PRIVATE_KEY, FINIK_PUBLIC_KEY, FINIK_ACCOUNT_ID — те же, что у diamond.kg (см. src/finik.js)
 
-import { buildHead, buildRtx2 } from "./tail.js";
+import { buildHead, buildRtx2, buildRtx3 } from "./tail.js";
 import { finikReady, createFinikPayment, readFinikWebhook, PAY_MIN } from "./finik.js";
 
 const TRIALS = 3;            // бесплатных видео на устройство
@@ -293,7 +293,11 @@ async function api(req, env, url) {
     if (body.length > MAX_HEAD || ftypLen > body.length) return json({ error: "big" }, 413);
     let head;
     try {
-      if (layout === "rtx2") {
+      if (layout === "rtx3") {
+        const r = buildRtx3({ moov: body.subarray(ftypLen), mdatPos, mdatSize });
+        // patch: какие куски mdat клиент заменяет кадром fill (остаток куска — нули)
+        head = { moov: r.pre, layout: "rtx3", pad: r.pre.length, patch: JSON.stringify({ f: [...r.fill].map(b => b.toString(16).padStart(2, "0")).join(""), p: r.patches }) };
+      } else if (layout === "rtx2") {
         const r = buildRtx2({ moov: body.subarray(ftypLen), mdatPos, mdatSize });
         const out = new Uint8Array(r.pre.length + r.post.length); out.set(r.pre); out.set(r.post, r.pre.length);
         head = { moov: out, layout: "rtx2", pad: r.pre.length };   // pad = длина части до mdat
@@ -308,7 +312,7 @@ async function api(req, env, url) {
       ]);
       left = await trialsLeft(env, device);
     }
-    return new Response(head.moov, { headers: { "content-type": "application/octet-stream", "cache-control": "no-store", "x-layout": head.layout, "x-pad": String(head.pad), "x-licensed": licensed ? "1" : "0", "x-trials-left": left === null ? "" : String(left) } });
+    return new Response(head.moov, { headers: { "content-type": "application/octet-stream", "cache-control": "no-store", "x-layout": head.layout, "x-pad": String(head.pad), "x-patch": head.patch || "", "x-licensed": licensed ? "1" : "0", "x-trials-left": left === null ? "" : String(left) } });
   }
 
   // Оплата подписки через Finik: новый ключ (key пустой) или продление своего ключа

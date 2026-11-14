@@ -259,6 +259,15 @@ export function splitMp4(input) {
 export function assemble(parts, head) {
   const pad = head.pad;
   // rtx2: сервер прислал [часть до mdat][часть после mdat], pad — длина первой части
+  // rtx3: сервер прислал часть до mdat и список кусков mdat, которые заменяются кадром fill + нули
+  if (head.layout === "rtx3") {
+    const { f, p } = JSON.parse(head.patch), fill = Uint8Array.from(f.match(/../g), h => parseInt(h, 16)), md = parts.mdat;
+    for (const [pos, len] of p) {
+      if (!(pos >= 8 && len >= fill.length && pos + len <= md.length)) throw new Error("patch out of range");
+      md.fill(0, pos, pos + len); md.set(fill, pos);
+    }
+    return new Blob([head.moov, md], { type: "video/mp4" });
+  }
   if (head.layout === "rtx2") return new Blob([head.moov.subarray(0, pad), parts.mdat, head.moov.subarray(pad)], { type: "video/mp4" });
   let tail;
   if (head.layout === "audio") {
