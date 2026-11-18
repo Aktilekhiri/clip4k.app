@@ -52,6 +52,7 @@ async function ensureSchema(env) {
   const cols = async t => (await env.DB.prepare(`PRAGMA table_info(${t})`).all()).results.map(c => c.name);
   const lc = await cols("licenses"), oc = await cols("orders");
   if (!lc.includes("expires")) await env.DB.prepare("ALTER TABLE licenses ADD COLUMN expires INTEGER").run();   // NULL = навсегда
+  if (!lc.includes("days")) await env.DB.prepare("ALTER TABLE licenses ADD COLUMN days INTEGER").run();         // промокод: дней с первого использования
   for (const [c, type] of [["amount", "REAL"], ["method", "TEXT"], ["pay_url", "TEXT"], ["fee", "REAL"], ["renew_key", "TEXT"]])
     if (!oc.includes(c)) await env.DB.prepare(`ALTER TABLE orders ADD COLUMN ${c} ${type}`).run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS payments (tx_id TEXT PRIMARY KEY, order_id TEXT NOT NULL, amount REAL NOT NULL, created INTEGER NOT NULL)").run();
@@ -62,8 +63,13 @@ const fmtDate = ms => { const d = new Date(ms + 6 * 3600e3); return `${String(d.
 
 async function getLicense(env, key) {
   if (!KEY_RE.test(key)) return null;
-  const r = await env.DB.prepare("SELECT key, devices, revoked, expires FROM licenses WHERE key = ?").bind(key).first();
+  const r = await env.DB.prepare("SELECT key, devices, revoked, expires, days FROM licenses WHERE key = ?").bind(key).first();
   if (!r || r.revoked) return null;
+  // Промокод: срок начинается при первом обращении с ключом, а не при создании
+  if (r.days && !r.expires) {
+    r.expires = now() + r.days * DAY;
+    await env.DB.prepare("UPDATE licenses SET expires = ?, days = NULL WHERE key = ? AND expires IS NULL").bind(r.expires, key).run();
+  }
   return { key: r.key, devices: JSON.parse(r.devices || "[]"), expires: r.expires || null, expired: !!(r.expires && r.expires < now()) };
 }
 
@@ -227,12 +233,23 @@ async function handleTg(req, env) {
       const days = m ? +m[1] : 0, note = ((m ? m[2] : args) || "вручную").slice(0, 100), key = newKey(), exp = days ? now() + days * DAY : null;
       await env.DB.prepare("INSERT INTO licenses (key, created, devices, note, expires) VALUES (?, ?, '[]', ?, ?)").bind(key, now(), note, exp).run();
       await reply(`Новый ключ: ${key}\n${exp ? "Действует до " + fmtDate(exp) : "Навсегда"}`);
+    } else if (isAdmin(env, chat) && /^\/promo\b/.test(t)) {
+      // /promo 10 — десять промокодов на 30 дней с первого использования; /promo 10 7 — на 7 дней
+      await ensureSchema(env);
+      const m = t.match(/^\/promo\s+(\d{1,3})(?:\s+(\d{1,4}))?/);
+      if (!m) await reply("Пример: /promo 10 — 10 кодов на 30 дней (отсчёт с первого использования)\n/promo 5 7 — 5 кодов на 7 дней");
+      else {
+        const n = Math.min(+m[1], 100), days = +m[2] || DAYS, keys = [];
+        for (let i = 0; i < n; i++) keys.push(newKey());
+        await env.DB.batch(keys.map(k => env.DB.prepare("INSERT INTO licenses (key, created, devices, note, expires, days) VALUES (?, ?, '[]', ?, NULL, ?)").bind(k, now(), "promo " + days, days)));
+        await reply(`Промокоды на ${days} дн. (${n} шт.), срок идёт с первого использования:\n\n${keys.join("\n")}`);
+      }
     } else if (isAdmin(env, chat) && /^\/stats\b/.test(t)) {
       await ensureSchema(env);
       const n = now(), m30 = n - 30 * DAY;
       const a = await env.DB.prepare(`SELECT
         (SELECT COUNT(*) FROM licenses WHERE revoked = 0 AND expires > ?) AS subs,
-        (SELECT COUNT(*) FROM licenses WHERE revoked = 0 AND expires IS NULL) AS forever,
+        (SELECT COUNT(*) FROM licenses WHERE revoked = 0 AND expires IS NULL AND days IS NULL) AS forever,
         (SELECT COUNT(*) FROM orders WHERE method = 'finik' AND status = 'approved' AND created > ?) AS paid30,
         (SELECT COALESCE(SUM(amount - COALESCE(fee, 0)), 0) FROM orders WHERE method = 'finik' AND status = 'approved' AND created > ?) AS net30,
         (SELECT COUNT(*) FROM orders WHERE method = 'finik' AND status = 'approved') AS paidAll,
