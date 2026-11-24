@@ -8,7 +8,7 @@ REQ = (f"<p><b>Исполнитель:</b> {IP}, Чуйская область, 
        "ИНН 20812200400202, ОКПО 35417374. Свидетельство о регистрации ИП № 008-2026-169-1532 от 04.11.2026, УГНС по Ысык-Атинскому району. "
        "Режим налогообложения: единый налог.</p>")
 CONTACT = ('Telegram <a href="https://t.me/AktilekKaziev">@AktilekKaziev</a>, бот <a href="https://t.me/clip4k_pay_bot">@clip4k_pay_bot</a>, '
-           'e-mail <a href="mailto:aktilek123z@gmail.com">aktilek123z@gmail.com</a>')
+           'e-mail <a href="mailto:kazievaktilek41@gmail.com">kazievaktilek41@gmail.com</a>')
 NAV = [("offer", "Оферта"), ("privacy", "Конфиденциальность"), ("refund", "Возврат"), ("contacts", "Контакты")]
 
 def page(slug, title, desc, body):
@@ -151,7 +151,7 @@ CONTACTS = f"""
 <ul>
 <li>Telegram: <a href="https://t.me/AktilekKaziev">@AktilekKaziev</a> — поддержка</li>
 <li>Бот: <a href="https://t.me/clip4k_pay_bot">@clip4k_pay_bot</a> — оплата звёздами, продление ключа, помощь по оплате (/paysupport)</li>
-<li>E-mail: <a href="mailto:aktilek123z@gmail.com">aktilek123z@gmail.com</a></li>
+<li>E-mail: <a href="mailto:kazievaktilek41@gmail.com">kazievaktilek41@gmail.com</a></li>
 </ul>
 <p>Обычно отвечаем в течение рабочего дня.</p>
 <h2>Реквизиты</h2>
